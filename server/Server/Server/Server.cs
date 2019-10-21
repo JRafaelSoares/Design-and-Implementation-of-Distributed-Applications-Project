@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting;
+using System.Runtime.Remoting.Channels;
+using System.Runtime.Remoting.Channels.Tcp;
 using System.Text;
 using System.Threading.Tasks;
 using MSDAD.Shared;
@@ -9,11 +12,16 @@ namespace MSDAD
 {
     namespace Server
     {
-        class Server : IMSDADServer
+        class Server : MarshalByRefObject, IMSDADServer
         {
             private HashSet<Meeting> Meetings;
             static void Main(string[] args)
             {
+                TcpChannel channel = new TcpChannel(8086);
+                ChannelServices.RegisterChannel(channel, false); 
+                RemotingConfiguration.RegisterWellKnownServiceType(typeof(Server), "MSDADServer", WellKnownObjectMode.Singleton);
+                System.Console.WriteLine(" Press < enter > to shutdown server...");
+                System.Console.ReadLine();
 
             }
 
