@@ -27,6 +27,20 @@ namespace Server
             }
         }
 
+        public override bool Equals(Object obj)
+        {
+            //Check for null and compare run-time types.
+            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            {
+                return false;
+            }
+            else
+            {
+                Meeting r = (Meeting)obj;
+                return r.topic == this.topic;
+            }
+        }
+
     }
 
     class Slot
