@@ -1,11 +1,11 @@
 # DAD
 
-- cliente - Console
+Client: Console
 
-- Server -> Console
+Server: Console
 
-- Shared-Library -> Library
+Shared-Library: Library
 
-- Pupper-Master -> Grphic Application
+Pupper-Master: Grphic Application
 
-- PCS -> Console
+PCS: Console
