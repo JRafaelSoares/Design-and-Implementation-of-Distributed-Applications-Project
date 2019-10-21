@@ -1,2 +1,7 @@
-# Design-and-Implementation-of-Distributed-Applications-Project
-Project for the Design and Implementation of Distributed Applications class
+# DAD
+
+cliente -> console
+servidor -> console
+biblioteca-partilhada -> library
+pupper-master -> grafica
+PCS -> console
