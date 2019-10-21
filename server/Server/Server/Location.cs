@@ -4,57 +4,65 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Server
+namespace MSDAD
 {
-    class Room
+    namespace Server
     {
-        private string name { get; }
-
-        //FIXME make capacity be always positive
-        private int capacity { get; }
-
-        //FIXME Make only date;
-        private HashSet<DateTime> bookings;
-
-        public Room(string name, int capacity)
+        class Room
         {
-            this.name = name;
-            this.capacity = capacity;
-            this.bookings = new HashSet<DateTime>();
+            private string Name { get; }
+
+            private uint Capacity { get; }
+
+            //FIXME Make only date;
+            private HashSet<DateTime> Bookings { get; }
+
+            public Room(string name, uint capacity)
+            {
+                this.Name = name;
+                this.Capacity = capacity;
+                this.Bookings = new HashSet<DateTime>();
+            }
+
+            //Set Methods
+            public override bool Equals(Object obj)
+            {
+                //Check for null and compare run-time types.
+                if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+                {
+                    return false;
+                }
+                else
+                {
+                    Room r = (Room)obj;
+                    return r.Name == this.Name;
+                }
+            }
+
+            public override int GetHashCode()
+            {
+                return this.Name.GetHashCode();
+            }
+
         }
 
-        public override bool Equals(Object obj)
+        class Location
         {
-            //Check for null and compare run-time types.
-            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            private string Name { get; }
+
+            private HashSet<Room> Rooms { get; }
+
+            public Location(string name, HashSet<Room> rooms)
             {
-                return false;
+                this.Name = name;
+                this.Rooms = rooms;
             }
-            else
+            public Location(string name)
             {
-                Room r = (Room)obj;
-                return r.name == this.name;
+                this.Name = name;
+                this.Rooms = new HashSet<Room>();
             }
         }
 
     }
-
-    class Location
-    {
-        private string name;
-
-        private HashSet<Room> rooms;
-
-        public Location(string name, HashSet<Room> rooms)
-        {
-            this.name = name;
-            this.rooms = rooms;
-        }
-        public Location(string name)
-        {
-            this.name = name;
-            this.rooms = new HashSet<Room>();
-        }
-    }
-
 }
