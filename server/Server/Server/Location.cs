@@ -56,4 +56,5 @@ namespace Server
             this.rooms = new HashSet<Room>();
         }
     }
+
 }
