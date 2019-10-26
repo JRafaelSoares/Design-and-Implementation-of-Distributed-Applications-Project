@@ -59,6 +59,11 @@ namespace MSDAD
                 this.Name = name;
                 this.Rooms = new HashSet<Room>();
             }
+
+            public override string ToString()
+            {
+                return this.Name;
+            }
         }
 
     }

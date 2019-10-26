@@ -77,6 +77,13 @@ namespace MSDAD
 
             }
 
+            public override string ToString()
+            {
+                string str = "(";
+                str += Date.ToString() + ", " + Location.ToString() + ")";
+                return str;
+            }
+
             public void addUserId(String userId)
             {
                 UserIds.Add(userId);
