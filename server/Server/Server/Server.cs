@@ -11,7 +11,7 @@ namespace MSDAD
     {
         class Server : MarshalByRefObject, IMSDADServer
         {
-            private HashSet<Meeting> Meetings;
+            private Dictionary<String, Meeting> Meetings;
             static void Main(string[] args)
             {
                 TcpChannel channel = new TcpChannel(8086);
@@ -22,23 +22,21 @@ namespace MSDAD
 
             }
 
-            void IMSDADServer.CreateMeeting(string coordId, string topic, int minParticipants, ISet<string> slots, ISet<string> invitees)
+            void IMSDADServer.CreateMeeting(string coordId, string topic, int minParticipants, HashSet<string> slots, HashSet<string> invitees)
             {
 
-                throw new NotImplementedException();
-
-                /*if (invitees == null)
+                if (invitees == null)
                 {
-                    //meetings.Add(new Meeting(coordId, topic, minParticipants, slots));
+                    Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
                 }
                 else
                 {
-                    //meetings.Add(new Meeting(coordId, topic, minParticipants, slots, invitees));
-                }*/
+                    Meetings.Add(topic, new MeetingInvitees(coordId, topic, minParticipants, slots, invitees));
+                }
             }
 
 
-            void IMSDADServer.JoinMeeting(String topic, ISet<string> slots, String userId)
+            void IMSDADServer.JoinMeeting(String topic, HashSet<string> slots, String userId)
             {
 
                 throw new NotImplementedException();

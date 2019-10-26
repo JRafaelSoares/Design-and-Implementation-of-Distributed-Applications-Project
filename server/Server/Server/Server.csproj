@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MeetingInvitees.cs" />
     <Compile Include="Location.cs" />
     <Compile Include="Meeting.cs" />
     <Compile Include="Server.cs" />
