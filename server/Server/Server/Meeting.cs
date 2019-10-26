@@ -12,7 +12,7 @@ namespace MSDAD
             private uint MinParticipants { get; }
             private List<Slot> Slots { get; }
 
-            public Meeting(String coordenatorID, String topic, uint minParticipants, HashSet<string> slots)
+            public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
             {
                 this.CoordenatorID = coordenatorID;
                 this.Topic = topic;
@@ -40,7 +40,7 @@ namespace MSDAD
                 return this.Topic.GetHashCode();
             }
 
-            public List<Slot> ParseSlots(HashSet<string> slots)
+            public List<Slot> ParseSlots(List<String> slots)
             {
                 List<Slot> hashSlot = new List<Slot>();
 
@@ -64,6 +64,8 @@ namespace MSDAD
             private Location Location { get; }
             private DateTime Date { get; }
 
+            private List<String> UserIds;
+
             public Slot(Location location, DateTime date)
             {
                 this.Location = location;
@@ -74,6 +76,12 @@ namespace MSDAD
             {
 
             }
+
+            public void addUserId(String userId)
+            {
+                UserIds.Add(userId);
+            }
+
 
         }
     }
