@@ -14,11 +14,33 @@ namespace MSDAD
         {
             private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
 
+            private readonly int SeverId;
+
+            private readonly uint MaxFaults;
+
+            private readonly float MinDelay;
+
+            private readonly float MaxDelay;
+
+            public Server(int ServerId, uint MaxFaults, float MinDelay, float MaxDelay)
+            {
+                this.SeverId = ServerId;
+                this.MaxFaults = MaxFaults;
+                this.MinDelay = MinDelay;
+                this.MaxDelay = MaxDelay;
+            }
+
             static void Main(string[] args)
             {
-                TcpChannel channel = new TcpChannel(8086);
+                if(args.Length != 5)
+                {
+                    Console.WriteLine("<Usage> Server server_id port max_faults min_delay max_delay");
+                    return;
+                }
+                TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
                 ChannelServices.RegisterChannel(channel, false);
-                RemotingConfiguration.RegisterWellKnownServiceType(typeof(Server), "MSDADServer", WellKnownObjectMode.Singleton);
+                Server server = new Server(Int32.Parse(args[0]), UInt32.Parse(args[2]), float.Parse(args[3]), float.Parse(args[4]));
+                RemotingServices.Marshal(server, "MSDADServer", typeof(Server));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
             }
