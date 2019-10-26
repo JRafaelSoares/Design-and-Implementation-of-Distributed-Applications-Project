@@ -62,9 +62,9 @@ namespace MSDAD
                 return true;
             }
 
-            public List<Slot> getSortedSlots()
+            public List<Slot> GetSortedSlots()
             {
-                Slots.Sort((x, y) => x.getNumUsers().CompareTo(y.getNumUsers()));
+                Slots.Sort((x, y) => x.GetNumUsers().CompareTo(y.GetNumUsers()));
 
                 return Slots;
             }
@@ -95,17 +95,17 @@ namespace MSDAD
                 return str;
             }
 
-            public void addUserId(String userId)
+            public void AddUserId(String userId)
             {
                 UserIds.Add(userId);
             }
 
-            public int getNumUsers()
+            public int GetNumUsers()
             {
                 return UserIds.Count;
             }
 
-            public Room getAvailableRoom(uint minNumParticipants)
+            public Room GetAvailableRoom(uint minNumParticipants)
             {
                 List<Room> rooms = Location.getOrderedRooms();
 
@@ -116,7 +116,7 @@ namespace MSDAD
                         return null;
                     }
 
-                    if (!room.isBooked(Date))
+                    if (!room.IsBooked(Date))
                     {
                         return room;
                     }
@@ -125,7 +125,7 @@ namespace MSDAD
                 return null;
             }
 
-            public void removeLastUsers(int usersToRemove)
+            public void RemoveLastUsers(int usersToRemove)
             {
                 UserIds.RemoveRange(UserIds.Count - usersToRemove, UserIds.Count);
             }
