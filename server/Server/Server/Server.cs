@@ -40,11 +40,18 @@ namespace MSDAD
                 if (slots != null)
                 {
                     Meeting m = Meetings[topic];
-                    List<Slot> ServerSlots = m.ParseSlots(slots);
+                    List<Slot> MeetingSlots = m.Slots;
+                    List<Slot> ClientSlots = m.ParseSlots(slots);
 
-                    foreach (Slot s in ServerSlots)
+                    foreach (Slot cslot in ClientSlots)
                     {
-                        s.addUserId(userId);
+                        foreach (Slot mslot in MeetingSlots)
+                        {
+                            if (cslot.Equals(mslot))
+                            {
+                                mslot.addUserId(userId);
+                            }
+                        }
                     }
                 }
 
