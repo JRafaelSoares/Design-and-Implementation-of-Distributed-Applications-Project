@@ -13,7 +13,7 @@ namespace MSDAD
 
             String ListMeetings(String userId);
 
-            String CloseMeeting(String topic, String userId);
+            void CloseMeeting(String topic, String userId);
         }
 
         public class ServerException : ApplicationException
@@ -57,7 +57,7 @@ namespace MSDAD
 
         public interface IMSDADServerPuppet
         {
-            void addRoom(String location, uint capacity, String roomName);
+            void AddRoom(String location, uint capacity, String roomName);
 
         }
     }

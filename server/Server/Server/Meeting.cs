@@ -5,6 +5,79 @@ namespace MSDAD
 {
     namespace Server
     {
+        class Slot
+        {
+            public Location Location { get; }
+            public DateTime Date { get; }
+
+            public List<String> UserIds = new List<String>();
+
+            public Slot(Location location, DateTime date)
+            {
+                this.Location = location;
+                this.Date = date;
+            }
+
+            public Slot(string slots)
+            {
+                String[] items = slots.Split(',');
+                this.Location = Location.FromName(items[0]);
+                this.Date = DateTime.Parse(items[1]);
+            }
+
+            public override string ToString()
+            {
+                return String.Format("({0},{1})", Date.ToString(), Location.ToString());
+            }
+
+            public void AddUserId(String userId)
+            {
+                UserIds.Add(userId);
+            }
+
+            public int GetNumUsers()
+            {
+                return UserIds.Count;
+            }
+
+            public Room GetAvailableRoom(uint minNumParticipants)
+            {
+                List<Room> rooms = Location.getOrderedRooms();
+
+                foreach (Room room in rooms)
+                {
+                    if (room.Capacity < minNumParticipants)
+                    {
+                        return null;
+                    }
+
+                    if (!room.IsBooked(Date))
+                    {
+                        return room;
+                    }
+                }
+
+                return null;
+            }
+
+            public void RemoveLastUsers(int usersToRemove)
+            {
+                UserIds.RemoveRange(UserIds.Count - usersToRemove, UserIds.Count);
+            }
+
+            public static List<Slot> ParseSlots(List<String> slots)
+            {
+                List<Slot> hashSlot = new List<Slot>();
+
+                foreach (string slot in slots)
+                {
+                    hashSlot.Add(new Slot(slot));
+                }
+
+                return hashSlot;
+            }
+        }
+
         class Meeting
         {
             public String CoordenatorID { get; }
@@ -58,80 +131,6 @@ namespace MSDAD
             }
         }
 
-        class Slot
-        {
-            public Location Location { get; }
-            public DateTime Date { get; }
-
-            public List<String> UserIds = new List<String>();
-
-            public Slot(Location location, DateTime date)
-            {
-                this.Location = location;
-                this.Date = date;
-            }
-
-            public Slot(string slots)
-            {
-                String[] items = slots.Split(',');
-                this.Location = Location.GetRoomFromName(items[0]);
-                this.Date = DateTime.Parse(items[1]);
-            }
-
-            public override string ToString()
-            {
-                string str = "(";
-                str += Date.ToString() + ", " + Location.ToString() + ")";
-                return str;
-            }
-
-            public void AddUserId(String userId)
-            {
-                UserIds.Add(userId);
-            }
-
-            public int GetNumUsers()
-            {
-                return UserIds.Count;
-            }
-
-            public Room GetAvailableRoom(uint minNumParticipants)
-            {
-                List<Room> rooms = Location.getOrderedRooms();
-
-                foreach(Room room in rooms)
-                {
-                    if (room.Capacity < minNumParticipants)
-                    {
-                        return null;
-                    }
-
-                    if (!room.IsBooked(Date))
-                    {
-                        return room;
-                    }
-                }
-
-                return null;
-            }
-
-            public void RemoveLastUsers(int usersToRemove)
-            {
-                UserIds.RemoveRange(UserIds.Count - usersToRemove, UserIds.Count);
-            }
-
-            public static List<Slot> ParseSlots(List<String> slots)
-            {
-                List<Slot> hashSlot = new List<Slot>();
-
-                foreach (string slot in slots)
-                {
-                    hashSlot.Add(new Slot(slot));
-                }
-
-                return hashSlot;
-            }
-        }
         class MeetingInvitees : Meeting
         {
             private HashSet<String> Invitees { get; } = new HashSet<String>();

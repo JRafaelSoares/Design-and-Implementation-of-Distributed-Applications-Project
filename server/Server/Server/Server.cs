@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
+using System.Linq;
 
 namespace MSDAD
 {
@@ -38,23 +39,15 @@ namespace MSDAD
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
 
-                Meeting m = Meetings[topic];
-                if (!m.CanJoin(userId))
+                Meeting meeting = Meetings[topic];
+                if (!meeting.CanJoin(userId))
                 {
                     throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.");
                 }
-                List<Slot> MeetingSlots = m.Slots;
-                List<Slot> ClientSlots = Slot.ParseSlots(slots);
 
-                foreach (Slot cslot in ClientSlots)
+                foreach (Slot slot in meeting.Slots.Intersect(Slot.ParseSlots(slots)))
                 {
-                    foreach (Slot mslot in MeetingSlots)
-                    {
-                        if (cslot.Equals(mslot))
-                        {
-                            mslot.AddUserId(userId);
-                        }
-                    }
+                    slot.AddUserId(userId);
                 }
 
             }
@@ -62,18 +55,15 @@ namespace MSDAD
             String IMSDADServer.ListMeetings(String userId)
             {
                 String meetings = "";
-                foreach (Meeting meeting in Meetings.Values)
+                foreach (Meeting meeting in Meetings.Values.Where(x => x.CanJoin(userId)).ToList())
                 {
-                    if (meeting.CanJoin(userId))
-                    {
+                    
                         meetings += meeting.ToString();
-                    }
                 }
-
                 return meetings;
             }
 
-            String IMSDADServer.CloseMeeting(String topic, String userId)
+            void IMSDADServer.CloseMeeting(String topic, String userId)
             {
                 Meeting meeting;
                 try
@@ -108,6 +98,7 @@ namespace MSDAD
                     }
 
                     //removes the last users to join (can be problematic in distributed/ order lists?)
+                    //FIXME Should we Not Cancel Instead (?)
                     if (room.Capacity < slot.GetNumUsers())
                     {
                         slot.RemoveLastUsers(slot.GetNumUsers() - (int)room.Capacity);
@@ -115,7 +106,7 @@ namespace MSDAD
 
                     room.AddBooking(slot.Date);
                     Meetings.Remove(topic);
-                    return String.Format("Meeting booked for date: {0}, location: {1} and room: {2}.", slot.Date, slot.Location.Name, room.Name);
+                    return;
                 }
 
                 Meetings.Remove(topic);
@@ -123,11 +114,11 @@ namespace MSDAD
 
             }
 
-            void IMSDADServerPuppet.addRoom(String location, uint capacity, String roomName)
+            void IMSDADServerPuppet.AddRoom(String location, uint capacity, String roomName)
             {
                 lock (this)
                 {
-                    Location local = Location.GetRoomFromName(location);
+                    Location local = Location.FromName(location);
                     if (local == null)
                     {
                         local = new Location(location);

@@ -78,7 +78,6 @@ namespace MSDAD
                 return Rooms;
             }
 
-
             public void addRoom(Room room)
             {
                 Rooms.Add(room);
@@ -94,7 +93,7 @@ namespace MSDAD
             }
 
 
-            public static Location GetRoomFromName(String name)
+            public static Location FromName(String name)
             {
                 return Locations[name];
             }
