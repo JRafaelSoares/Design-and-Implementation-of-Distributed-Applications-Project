@@ -7,10 +7,10 @@ namespace MSDAD
     {
         class Meeting
         {
-            private String CoordenatorID { get; }
-            private String Topic { get; }
-            private uint MinParticipants { get; }
-            private List<Slot> Slots { get; }
+            public String CoordenatorID { get; }
+            public String Topic { get; }
+            public uint MinParticipants { get; }
+            public List<Slot> Slots { get; }
 
             public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
             {
@@ -57,14 +57,20 @@ namespace MSDAD
                 return String.Format("{0}\n{1}\n{2}\n{3}\n\n", this.CoordenatorID, this.Topic, this.MinParticipants, this.Slots.ToString());
             }
 
+            public List<Slot> getSortedSlots()
+            {
+                Slots.Sort((x, y) => x.getNumUsers().CompareTo(y.getNumUsers()));
+
+                return Slots;
+            }
         }
 
         class Slot
         {
-            private Location Location { get; }
-            private DateTime Date { get; }
+            public Location Location { get; }
+            public DateTime Date { get; }
 
-            private List<String> UserIds;
+            public List<String> UserIds;
 
             public Slot(Location location, DateTime date)
             {
@@ -82,7 +88,35 @@ namespace MSDAD
                 UserIds.Add(userId);
             }
 
+            public int getNumUsers()
+            {
+                return UserIds.Count;
+            }
 
+            public Room getAvailableRoom(uint minNumParticipants)
+            {
+                List<Room> rooms = Location.getOrderedRooms();
+
+                foreach(Room room in rooms)
+                {
+                    if (room.Capacity < minNumParticipants)
+                    {
+                        return null;
+                    }
+
+                    if (!room.isBooked(Date))
+                    {
+                        return room;
+                    }
+                }
+
+                return null;
+            }
+
+            public void removeLastUsers(int usersToRemove)
+            {
+                UserIds.RemoveRange(UserIds.Count - usersToRemove, UserIds.Count);
+            }
         }
     }
 }

@@ -13,7 +13,7 @@ namespace MSDAD
 
             String ListMeetings(String userId);
 
-            void CloseMeeting(String topic, String userId);
+            String CloseMeeting(String topic, String userId);
         }
     }
 }

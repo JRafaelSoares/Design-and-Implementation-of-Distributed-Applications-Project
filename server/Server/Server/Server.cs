@@ -61,11 +61,46 @@ namespace MSDAD
                 return meetings;
             }
 
-            void IMSDADServer.CloseMeeting(String topic, String userId)
+            String IMSDADServer.CloseMeeting(String topic, String userId)
             {
                 Meeting meeting = Meetings[topic];
 
-                throw new NotImplementedException();
+                if(meeting.CoordenatorID != userId)
+                {
+                    return "You do not have permission to close this meeting!";
+                }
+
+                List<Slot> slots = meeting.getSortedSlots();
+
+                foreach(Slot slot in slots)
+                {
+                    if (slot.getNumUsers() < meeting.MinParticipants)
+                    {
+                        Meetings.Remove(topic);
+                        return "No meeting could be booked. Meeting Canceled";
+                    }
+
+                    Room room = slot.getAvailableRoom(meeting.MinParticipants);
+
+                    if (room == null)
+                    {
+                        continue;
+                    }
+
+                    //removes the last users to join (can be problematic in distributed/ order lists?)
+                    if (room.Capacity < slot.getNumUsers())
+                    {
+                        slot.removeLastUsers(slot.getNumUsers() - (int)room.Capacity);
+                    }
+
+                    room.addBooking(slot.Date);
+                    Meetings.Remove(topic);
+                    return String.Format("Meeting booked for date: {0}, location: {1} and room: {2}.", slot.Date, slot.Location.Name, room.Name);
+                }
+
+                Meetings.Remove(topic);
+                return "No meeting could be booked. Meeting Canceled";
+
             }
 
         }

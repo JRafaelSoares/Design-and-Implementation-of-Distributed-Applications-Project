@@ -7,9 +7,9 @@ namespace MSDAD
     {
         class Room
         {
-            private string Name { get; }
+            public string Name { get; }
 
-            private uint Capacity { get; }
+            public uint Capacity { get; }
 
             //FIXME Make only date;
             private HashSet<DateTime> Bookings { get; }
@@ -41,15 +41,25 @@ namespace MSDAD
                 return this.Name.GetHashCode();
             }
 
+            public bool isBooked(DateTime time)
+            {
+                //Problem with contains probable >.>
+                return Bookings.Contains(time);
+            }
+
+            public void addBooking(DateTime time)
+            {
+                Bookings.Add(time);
+            }
         }
 
         class Location
         {
-            private string Name { get; }
+            public string Name { get; }
 
-            private HashSet<Room> Rooms { get; }
+            public List<Room> Rooms { get; }
 
-            public Location(string name, HashSet<Room> rooms)
+            public Location(string name, List<Room> rooms)
             {
                 this.Name = name;
                 this.Rooms = rooms;
@@ -57,7 +67,13 @@ namespace MSDAD
             public Location(string name)
             {
                 this.Name = name;
-                this.Rooms = new HashSet<Room>();
+                this.Rooms = new List<Room>();
+            }
+
+            public List<Room> getOrderedRooms()
+            {
+                Rooms.Sort((x, y) => x.Capacity.CompareTo(y.Capacity));
+                return Rooms;
             }
         }
 
