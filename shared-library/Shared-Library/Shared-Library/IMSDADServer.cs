@@ -32,6 +32,57 @@ namespace MSDAD
             }
 
         }
+
+        [Serializable]
+        public class ClientNotCoordenatorException : ApplicationException
+        {
+            public String messageError;
+
+            public ClientNotCoordenatorException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
+
+        [Serializable]
+        public class TopicDoesNotExistException : ApplicationException
+        {
+            public String messageError;
+
+            public TopicDoesNotExistException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
+
+        [Serializable]
+        public class NoMeetingAvailableException : ApplicationException
+        {
+            public String messageError;
+
+            public NoMeetingAvailableException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
     }
 }
 

@@ -75,11 +75,18 @@ namespace MSDAD
 
             String IMSDADServer.CloseMeeting(String topic, String userId)
             {
-                Meeting meeting = Meetings[topic];
+                Meeting meeting;
+                try
+                {
+                    meeting = Meetings[topic];
+                } catch (KeyNotFoundException)
+                {
+                    throw new TopicDoesNotExistException("Topic " + topic + " does not exist");
+                }
 
                 if(meeting.CoordenatorID != userId)
                 {
-                    return "You do not have permission to close this meeting!";
+                    throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.");
                 }
 
                 List<Slot> slots = meeting.getSortedSlots();
@@ -89,7 +96,7 @@ namespace MSDAD
                     if (slot.getNumUsers() < meeting.MinParticipants)
                     {
                         Meetings.Remove(topic);
-                        return "No meeting could be booked. Meeting Canceled";
+                        throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
                     }
 
                     Room room = slot.getAvailableRoom(meeting.MinParticipants);
@@ -111,7 +118,7 @@ namespace MSDAD
                 }
 
                 Meetings.Remove(topic);
-                return "No meeting could be booked. Meeting Canceled";
+                throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
 
             }
 
