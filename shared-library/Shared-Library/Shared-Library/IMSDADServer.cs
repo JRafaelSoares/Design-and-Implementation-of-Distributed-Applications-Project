@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Shared_Library
+namespace MSDAD
 {
-    public interface IMSDADServer
+    namespace Shared
     {
-        void createMeeting(string coordId, string topic, int minParticipants, ISet<string> slots, ISet<string> users = null);
+        public interface IMSDADServer
+        {
+            void CreateMeeting(string coordId, string topic, int minParticipants, ISet<string> slots, ISet<string> invitees = null);
 
-        void joinMeeting(String topic, ISet<string> slots, String userId);
+            void JoinMeeting(String topic, ISet<string> slots, String userId);
 
-        ISet<String> listMeetings(String userId);
+            IList<String> ListMeetings(String userId);
 
-        void closeMeeting(String topic, String userId);
+            void CloseMeeting(String topic, String userId);
+        }
     }
 }

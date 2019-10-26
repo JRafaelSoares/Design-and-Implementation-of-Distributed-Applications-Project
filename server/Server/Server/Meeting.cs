@@ -1,58 +1,64 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Server
+namespace MSDAD
 {
-    class Meeting
+    namespace Server
     {
-        private String coordenatorID { get; }
-        private String topic { get; }
-        private int minParticipants { get; }
-        private HashSet<Slot> slots { get; }
-        private HashSet<String> invitees { get; } = new HashSet<String>();
-
-        public Meeting(String coordenatorID, String topic, int minParticipants, HashSet<Slot> slots, HashSet<String> invitees = null)
+        class Meeting
         {
-            this.coordenatorID = coordenatorID;
-            this.topic = topic;
-            this.minParticipants = minParticipants;
-            this.slots = slots;
+            private String CoordenatorID { get; }
+            private String Topic { get; }
+            private int MinParticipants { get; }
+            private HashSet<Slot> Slots { get; }
+            private HashSet<String> Invitees { get; } = new HashSet<String>();
 
-            if (invitees != null)
+            public Meeting(String coordenatorID, String topic, int minParticipants, HashSet<Slot> slots, HashSet<String> invitees = null)
             {
-                this.invitees = invitees;
+                this.CoordenatorID = coordenatorID;
+                this.Topic = topic;
+                this.MinParticipants = minParticipants;
+                this.Slots = slots;
+
+                if (invitees != null)
+                {
+                    this.Invitees = invitees;
+                }
             }
+
+            //Set Methods
+            public override bool Equals(Object obj)
+            {
+                //Check for null and compare run-time types.
+                if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+                {
+                    return false;
+                }
+                else
+                {
+                    Meeting r = (Meeting)obj;
+                    return r.Topic == this.Topic;
+                }
+            }
+
+            public override int GetHashCode()
+            {
+                return this.Topic.GetHashCode();
+            }
+
         }
 
-        public override bool Equals(Object obj)
+        class Slot
         {
-            //Check for null and compare run-time types.
-            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            private Location Location { get; }
+            private DateTime Date { get; }
+
+            public Slot(Location location, DateTime date)
             {
-                return false;
+                this.Location = location;
+                this.Date = date;
             }
-            else
-            {
-                Meeting r = (Meeting)obj;
-                return r.topic == this.topic;
-            }
+
         }
-
-    }
-
-    class Slot
-    {
-        private Location location { get; }
-        private DateTime date { get; }
-
-        public Slot(Location location, DateTime date)
-        {
-            this.location = location;
-            this.date = date;
-        }
-
     }
 }
