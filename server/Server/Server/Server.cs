@@ -37,15 +37,23 @@ namespace MSDAD
 
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
-                
-                Meeting Meeting = Meetings[topic];
-                List<Slot> ServerSlots = Meeting.ParseSlots(slots);
-
-                foreach (Slot s in ServerSlots)
+                if (slots != null)
                 {
-                    s.addUserId(userId);
+                    Meeting m = Meetings[topic];
+                    List<Slot> MeetingSlots = m.Slots;
+                    List<Slot> ClientSlots = m.ParseSlots(slots);
+
+                    foreach (Slot cslot in ClientSlots)
+                    {
+                        foreach (Slot mslot in MeetingSlots)
+                        {
+                            if (cslot.Equals(mslot))
+                            {
+                                mslot.addUserId(userId);
+                            }
+                        }
+                    }
                 }
-                
 
             }
 
@@ -54,10 +62,7 @@ namespace MSDAD
                 String meetings = "";
                 foreach(Meeting meeting in Meetings.Values)
                 {
-                    if (meeting.CanJoin(userId))
-                    {
-                        meetings += meeting.ToString();
-                    }
+                    meetings += meeting.ToString();
                 }
 
                 return meetings;

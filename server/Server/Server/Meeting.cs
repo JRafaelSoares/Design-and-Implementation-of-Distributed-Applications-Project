@@ -7,10 +7,10 @@ namespace MSDAD
     {
         class Meeting
         {
-            private String CoordenatorID { get; }
-            private String Topic { get; }
-            private uint MinParticipants { get; }
-            private List<Slot> Slots { get; }
+            public String CoordenatorID { get; }
+            public String Topic { get; }
+            public uint MinParticipants { get; }
+            public List<Slot> Slots { get; }
 
             public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
             {
@@ -66,8 +66,8 @@ namespace MSDAD
 
         class Slot
         {
-            private Location Location { get; }
-            private DateTime Date { get; }
+            public Location Location { get; }
+            public DateTime Date { get; }
 
             private List<String> UserIds;
 
