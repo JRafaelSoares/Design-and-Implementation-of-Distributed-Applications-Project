@@ -15,15 +15,19 @@ namespace MSDAD
         {
             private readonly IMSDADServer Server;
             private readonly String UserId;
+            private int milliseconds;
 
             public Client(IMSDADServer server, String userId)
             {
                 this.Server = server;
                 this.UserId = userId;
+                this.milliseconds = 0;
             }
 
             private void ListMeetings()
             {
+                SafeSleep();
+
                 String meetings = Server.ListMeetings(this.UserId);
                 
                 Console.WriteLine(meetings);   
@@ -32,6 +36,7 @@ namespace MSDAD
 
             private void JoinMeeting(String topic, List<String> slots)
             {
+                SafeSleep();
                 try
                 {
                     Server.JoinMeeting(topic, slots, this.UserId);
@@ -43,6 +48,7 @@ namespace MSDAD
 
             private void CloseMeeting(String topic)
             {
+                SafeSleep();
                 try
                 {
                     Server.CloseMeeting(topic, this.UserId);
@@ -54,12 +60,23 @@ namespace MSDAD
 
             private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)
             {
+                SafeSleep();
                 Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
             }
 
             private void Wait(int milliseconds)
             {
-                Thread.Sleep(milliseconds);
+                SafeSleep();
+                this.milliseconds = milliseconds;
+            }
+
+            private void SafeSleep()
+            {
+                if (this.milliseconds != 0)
+                {
+                    Thread.Sleep(this.milliseconds);
+                    this.milliseconds = 0;
+                }
             }
 
             public void ParseScript(parseDelegate reader)
