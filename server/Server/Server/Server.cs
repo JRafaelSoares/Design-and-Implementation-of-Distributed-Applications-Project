@@ -11,7 +11,7 @@ namespace MSDAD
     {
         class Server : MarshalByRefObject, IMSDADServer
         {
-            private Dictionary<String, Meeting> Meetings;
+            private Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
             static void Main(string[] args)
             {
                 TcpChannel channel = new TcpChannel(8086);
