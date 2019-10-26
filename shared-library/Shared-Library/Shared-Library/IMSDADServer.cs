@@ -13,7 +13,75 @@ namespace MSDAD
 
             String ListMeetings(String userId);
 
-            void CloseMeeting(String topic, String userId);
+            String CloseMeeting(String topic, String userId);
+        }
+
+        [Serializable]
+        public class CannotJoinMeetingException : ApplicationException
+        {
+            public String messageError;
+
+            public CannotJoinMeetingException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
+
+        [Serializable]
+        public class ClientNotCoordenatorException : ApplicationException
+        {
+            public String messageError;
+
+            public ClientNotCoordenatorException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
+
+        [Serializable]
+        public class TopicDoesNotExistException : ApplicationException
+        {
+            public String messageError;
+
+            public TopicDoesNotExistException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
+
+        [Serializable]
+        public class NoMeetingAvailableException : ApplicationException
+        {
+            public String messageError;
+
+            public NoMeetingAvailableException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
         }
 
         public interface IMSDADServerPuppet
@@ -23,3 +91,4 @@ namespace MSDAD
         }
     }
 }
+

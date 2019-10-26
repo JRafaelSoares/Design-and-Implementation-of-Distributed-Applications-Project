@@ -9,7 +9,7 @@ namespace MSDAD
 {
     namespace Server
     {
-        class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet
+        class Server : MarshalByRefObject, IMSDADServer
         {
             private Dictionary<String, Meeting> Meetings;
             static void Main(string[] args)
@@ -23,39 +23,40 @@ namespace MSDAD
 
             void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
-                lock (this)
+
+                if (invitees == null)
                 {
-                    if (invitees == null)
-                    {
-                        Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
-                    }
-                    else
-                    {
-                        Meetings.Add(topic, new MeetingInvitees(coordId, topic, minParticipants, slots, invitees));
-                    }
+                    Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
+                }
+                else
+                {
+                    Meetings.Add(topic, new MeetingInvitees(coordId, topic, minParticipants, slots, invitees));
                 }
             }
 
+
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
-                lock (this)
-                {
-                    Meeting m = Meetings[topic];
-                    List<Slot> MeetingSlots = m.Slots;
-                    List<Slot> ClientSlots = Slot.ParseSlots(slots);
 
-                    foreach (Slot cslot in ClientSlots)
+                Meeting m = Meetings[topic];
+                if (!m.CanJoin(userId))
+                {
+                    throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.");
+                }
+                List<Slot> MeetingSlots = m.Slots;
+                List<Slot> ClientSlots = m.ParseSlots(slots);
+
+                foreach (Slot cslot in ClientSlots)
+                {
+                    foreach (Slot mslot in MeetingSlots)
                     {
-                        foreach (Slot mslot in MeetingSlots)
+                        if (cslot.Equals(mslot))
                         {
-                            if (cslot.Equals(mslot))
-                            {
-                                mslot.addUserId(userId);
-                                break;
-                            }
+                            mslot.addUserId(userId);
                         }
                     }
-                }
+                }    
+
             }
 
             String IMSDADServer.ListMeetings(String userId)
@@ -72,27 +73,53 @@ namespace MSDAD
                 return meetings;
             }
 
-            void IMSDADServer.CloseMeeting(String topic, String userId)
+            String IMSDADServer.CloseMeeting(String topic, String userId)
             {
-                lock (this)
+                Meeting meeting;
+                try
                 {
-                    Meeting meeting = Meetings[topic];
-
-                    throw new NotImplementedException();
+                    meeting = Meetings[topic];
+                } catch (KeyNotFoundException)
+                {
+                    throw new TopicDoesNotExistException("Topic " + topic + " does not exist");
                 }
-            }
 
-            void IMSDADServerPuppet.addRoom(String location, uint capacity, String roomName)
-            {
-                lock (this) {
-                    Location local = Location.GetRoomFromName(location);
-                    if (local == null)
+                if(meeting.CoordenatorID != userId)
+                {
+                    throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.");
+                }
+
+                List<Slot> slots = meeting.getSortedSlots();
+
+                foreach(Slot slot in slots)
+                {
+                    if (slot.getNumUsers() < meeting.MinParticipants)
                     {
-                        local = new Location(location);
-                        Location.addLocation(local);
+                        Meetings.Remove(topic);
+                        throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
                     }
-                    local.addRoom(new Room(roomName, capacity));
+
+                    Room room = slot.getAvailableRoom(meeting.MinParticipants);
+
+                    if (room == null)
+                    {
+                        continue;
+                    }
+
+                    //removes the last users to join (can be problematic in distributed/ order lists?)
+                    if (room.Capacity < slot.getNumUsers())
+                    {
+                        slot.removeLastUsers(slot.getNumUsers() - (int)room.Capacity);
+                    }
+
+                    room.addBooking(slot.Date);
+                    Meetings.Remove(topic);
+                    return String.Format("Meeting booked for date: {0}, location: {1} and room: {2}.", slot.Date, slot.Location.Name, room.Name);
                 }
+
+                Meetings.Remove(topic);
+                throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
+
             }
 
         }
