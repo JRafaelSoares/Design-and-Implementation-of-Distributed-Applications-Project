@@ -25,7 +25,7 @@ namespace MSDAD
 
             public override bool CanJoin(string userId)
             {
-                return Invitees.Contains(userId);
+                return Invitees.Contains(userId) || userId == this.CoordenatorID;
             }
         }
     }
