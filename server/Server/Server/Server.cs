@@ -21,7 +21,7 @@ namespace MSDAD
                 System.Console.ReadLine();
             }
 
-            void IMSDADServer.CreateMeeting(string coordId, string topic, int minParticipants, HashSet<string> slots, HashSet<string> invitees)
+            void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, HashSet<string> slots, HashSet<string> invitees)
             {
 
                 if (invitees == null)
@@ -54,6 +54,7 @@ namespace MSDAD
 
             void IMSDADServer.CloseMeeting(String topic, String userId)
             {
+                Meeting meeting = Meetings[topic];
 
                 throw new NotImplementedException();
             }

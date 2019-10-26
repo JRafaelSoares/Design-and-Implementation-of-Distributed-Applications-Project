@@ -9,10 +9,10 @@ namespace MSDAD
         {
             private String CoordenatorID { get; }
             private String Topic { get; }
-            private int MinParticipants { get; }
+            private uint MinParticipants { get; }
             private List<Slot> Slots { get; }
 
-            public Meeting(String coordenatorID, String topic, int minParticipants, HashSet<string> slots)
+            public Meeting(String coordenatorID, String topic, uint minParticipants, HashSet<string> slots)
             {
                 this.CoordenatorID = coordenatorID;
                 this.Topic = topic;
