@@ -21,7 +21,7 @@ namespace MSDAD
                 System.Console.ReadLine();
             }
 
-            void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, HashSet<string> slots, HashSet<string> invitees)
+            void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
 
                 if (invitees == null)
@@ -35,10 +35,19 @@ namespace MSDAD
             }
 
 
-            void IMSDADServer.JoinMeeting(String topic, HashSet<string> slots, String userId)
+            void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
+                if (slots != null)
+                {
+                    Meeting m = Meetings[topic];
+                    List<Slot> ServerSlots = m.ParseSlots(slots);
 
-                throw new NotImplementedException();
+                    foreach (Slot s in ServerSlots)
+                    {
+                        s.addUserId(userId);
+                    }
+                }
+
             }
 
             String IMSDADServer.ListMeetings(String userId)
