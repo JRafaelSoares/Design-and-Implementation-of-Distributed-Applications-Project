@@ -28,7 +28,7 @@ namespace MSDAD
                 }
             }
 
-            public void JoinMeeting(String topic, ISet<String> slots)
+            public void JoinMeeting(String topic, HashSet<String> slots)
             {
                 Server.JoinMeeting(topic, slots, this.UserId);
             }
