@@ -79,7 +79,7 @@ namespace MSDAD
 
             public Slot(string slots)
             {
-
+                //TODO
             }
 
             public void addUserId(String userId)
