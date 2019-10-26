@@ -37,7 +37,7 @@ namespace MSDAD
                     Server.JoinMeeting(topic, slots, this.UserId);
                 } catch (ServerException e)
                 {
-                    Console.WriteLine(e.getErrorMessage());
+                    Console.WriteLine(e.GetErrorMessage());
                 }
             }
 
@@ -48,7 +48,7 @@ namespace MSDAD
                     Server.CloseMeeting(topic, this.UserId);
                 } catch(ServerException e)
                 {
-                    Console.Write(e.getErrorMessage());
+                    Console.Write(e.GetErrorMessage());
                 } 
             }
 
@@ -64,7 +64,7 @@ namespace MSDAD
 
             public void ParseScript(parseDelegate reader)
             {
-                String line = null;
+                String line;
                 while(( line = reader.Invoke() ) != null)
                 {
                     String[] items = line.Split(' ');
@@ -139,7 +139,9 @@ namespace MSDAD
                   
                     if (File.Exists(args[3]))
                     {
-                        client.ParseScript(File.OpenText(args[3]).ReadLine);
+                        StreamReader reader = File.OpenText(args[3]);
+                        client.ParseScript(reader.ReadLine);
+                        reader.Close();
                        
                     }
                     else
@@ -147,12 +149,7 @@ namespace MSDAD
                         Console.WriteLine("Error: File provided does not exist");
                     }
                     client.ParseScript(Console.ReadLine);
-                    
-                    
-
                 }
-
-
             }
         }
     }
