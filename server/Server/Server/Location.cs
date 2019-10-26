@@ -41,13 +41,13 @@ namespace MSDAD
                 return this.Name.GetHashCode();
             }
 
-            public bool isBooked(DateTime time)
+            public bool IsBooked(DateTime time)
             {
                 //Problem with contains probable >.>
                 return Bookings.Contains(time);
             }
 
-            public void addBooking(DateTime time)
+            public void AddBooking(DateTime time)
             {
                 Bookings.Add(time);
             }

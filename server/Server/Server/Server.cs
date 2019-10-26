@@ -52,7 +52,7 @@ namespace MSDAD
                     {
                         if (cslot.Equals(mslot))
                         {
-                            mslot.addUserId(userId);
+                            mslot.AddUserId(userId);
                         }
                     }
                 }
@@ -90,17 +90,17 @@ namespace MSDAD
                     throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.");
                 }
 
-                List<Slot> slots = meeting.getSortedSlots();
+                List<Slot> slots = meeting.GetSortedSlots();
 
                 foreach (Slot slot in slots)
                 {
-                    if (slot.getNumUsers() < meeting.MinParticipants)
+                    if (slot.GetNumUsers() < meeting.MinParticipants)
                     {
                         Meetings.Remove(topic);
                         throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
                     }
 
-                    Room room = slot.getAvailableRoom(meeting.MinParticipants);
+                    Room room = slot.GetAvailableRoom(meeting.MinParticipants);
 
                     if (room == null)
                     {
@@ -108,12 +108,12 @@ namespace MSDAD
                     }
 
                     //removes the last users to join (can be problematic in distributed/ order lists?)
-                    if (room.Capacity < slot.getNumUsers())
+                    if (room.Capacity < slot.GetNumUsers())
                     {
-                        slot.removeLastUsers(slot.getNumUsers() - (int)room.Capacity);
+                        slot.RemoveLastUsers(slot.GetNumUsers() - (int)room.Capacity);
                     }
 
-                    room.addBooking(slot.Date);
+                    room.AddBooking(slot.Date);
                     Meetings.Remove(topic);
                     return String.Format("Meeting booked for date: {0}, location: {1} and room: {2}.", slot.Date, slot.Location.Name, room.Name);
                 }
