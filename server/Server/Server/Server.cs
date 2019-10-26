@@ -12,7 +12,8 @@ namespace MSDAD
     {
         class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet
         {
-            private Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
+            private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
+
             static void Main(string[] args)
             {
                 TcpChannel channel = new TcpChannel(8086);
@@ -80,38 +81,19 @@ namespace MSDAD
                     throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.");
                 }
 
-                List<Slot> slots = meeting.GetSortedSlots();
-
-                foreach (Slot slot in slots)
+                //FIXME What happens if no room is avaliable
+                //FIXME Which Users get to Join the Meeting?
+                Slot slot = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants)
+                                         .First(x => x.GetAvailableRoom(meeting.MinParticipants) != null);
+                
+                if (slot == null)
                 {
-                    if (slot.GetNumUsers() < meeting.MinParticipants)
-                    {
-                        Meetings.Remove(topic);
-                        throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
-                    }
-
-                    Room room = slot.GetAvailableRoom(meeting.MinParticipants);
-
-                    if (room == null)
-                    {
-                        continue;
-                    }
-
-                    //removes the last users to join (can be problematic in distributed/ order lists?)
-                    //FIXME Should we Not Cancel Instead (?)
-                    if (room.Capacity < slot.GetNumUsers())
-                    {
-                        slot.RemoveLastUsers(slot.GetNumUsers() - (int)room.Capacity);
-                    }
-
-                    room.AddBooking(slot.Date);
-                    Meetings.Remove(topic);
-                    return;
+                    throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled");
                 }
 
+                slot.GetAvailableRoom(meeting.MinParticipants).AddBooking(slot.Date);
                 Meetings.Remove(topic);
-                throw new NoMeetingAvailableException("No meeting meets the requirements. Meeting Canceled");
-
+                return; 
             }
 
             void IMSDADServerPuppet.AddRoom(String location, uint capacity, String roomName)
@@ -122,9 +104,9 @@ namespace MSDAD
                     if (local == null)
                     {
                         local = new Location(location);
-                        Location.addLocation(local);
+                        Location.AddLocation(local);
                     }
-                    local.addRoom(new Room(roomName, capacity));
+                    local.AddRoom(new Room(roomName, capacity));
                 }
 
             }

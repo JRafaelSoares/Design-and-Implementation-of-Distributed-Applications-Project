@@ -25,7 +25,7 @@ namespace MSDAD
                 this.messageError = m;
             }
 
-            public String getErrorMessage()
+            public String GetErrorMessage()
             {
                 return this.messageError;
             }

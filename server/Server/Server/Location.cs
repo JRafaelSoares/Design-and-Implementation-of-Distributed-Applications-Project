@@ -55,7 +55,7 @@ namespace MSDAD
 
         class Location
         {
-            static Dictionary<String, Location> Locations = new Dictionary<string, Location>();
+            static readonly Dictionary<String, Location> Locations = new Dictionary<string, Location>();
 
             public string Name { get; }
 
@@ -66,19 +66,20 @@ namespace MSDAD
                 this.Name = name;
                 this.Rooms = rooms;
             }
+
             public Location(string name)
             {
                 this.Name = name;
                 this.Rooms = new List<Room>();
             }
 
-            public List<Room> getOrderedRooms()
+            public List<Room> GetOrderedRooms()
             {
                 Rooms.Sort((x, y) => x.Capacity.CompareTo(y.Capacity));
                 return Rooms;
             }
 
-            public void addRoom(Room room)
+            public void AddRoom(Room room)
             {
                 Rooms.Add(room);
             }
@@ -87,17 +88,18 @@ namespace MSDAD
             {
                 return this.Name;
             }
+
             public bool Equals(Location other)
             {
                 return this.Name == other.Name;
             }
 
-
             public static Location FromName(String name)
             {
                 return Locations[name];
             }
-            public static void addLocation(Location location)
+
+            public static void AddLocation(Location location)
             {
                 Locations.Add(location.Name, location);
             }

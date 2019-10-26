@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MSDAD
 {
@@ -42,22 +43,8 @@ namespace MSDAD
 
             public Room GetAvailableRoom(uint minNumParticipants)
             {
-                List<Room> rooms = Location.getOrderedRooms();
+                return Location.Rooms.Where(x => x.Capacity >= minNumParticipants).First(x => !x.IsBooked(Date));
 
-                foreach (Room room in rooms)
-                {
-                    if (room.Capacity < minNumParticipants)
-                    {
-                        return null;
-                    }
-
-                    if (!room.IsBooked(Date))
-                    {
-                        return room;
-                    }
-                }
-
-                return null;
             }
 
             public void RemoveLastUsers(int usersToRemove)
