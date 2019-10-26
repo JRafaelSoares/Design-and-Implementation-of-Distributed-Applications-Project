@@ -24,15 +24,13 @@ namespace MSDAD
 
             private void ListMeetings()
             {
-                IList<String> meetings = Server.ListMeetings(this.UserId);
+                String meetings = Server.ListMeetings(this.UserId);
                 
-                foreach (String s in meetings)
-                {
-                    Console.WriteLine(s);   
-                }
+                Console.WriteLine(meetings);   
+                
             }
 
-            private void JoinMeeting(String topic, HashSet<String> slots)
+            private void JoinMeeting(String topic, List<String> slots)
             {
                 Server.JoinMeeting(topic, slots, this.UserId);
             }
@@ -42,7 +40,7 @@ namespace MSDAD
                 Server.CloseMeeting(topic, this.UserId);
             }
 
-            private void CreateMeeting(String topic, uint min_atendees, HashSet<String> slots, HashSet<String> invitees)
+            private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)
             {
                 Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
             }
@@ -69,7 +67,7 @@ namespace MSDAD
                             break;
 
                         case "join":
-                            HashSet<String> slots = new HashSet<string>();
+                            List<String> slots = new List<string>();
                             for (uint i = 2; i < items.Length; ++i)
                             {
                                 slots.Add(items[i]);
@@ -81,7 +79,7 @@ namespace MSDAD
                             int numSlots = Int32.Parse(items[3]);
                             int numInvitees = Int32.Parse(items[4]);
 
-                            slots = new HashSet<string>();
+                            slots = new List<string>();
                             HashSet<String> invitees =  numInvitees == 0 ?  null : new HashSet<string>();
                             uint j;
                             for (j = 5; j < 5 + numSlots; ++j)
