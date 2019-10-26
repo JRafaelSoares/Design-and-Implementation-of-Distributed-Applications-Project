@@ -35,7 +35,7 @@ namespace MSDAD
                 try
                 {
                     Server.JoinMeeting(topic, slots, this.UserId);
-                } catch (CannotJoinMeetingException e)
+                } catch (ServerException e)
                 {
                     Console.WriteLine(e.getErrorMessage());
                 }
@@ -43,7 +43,13 @@ namespace MSDAD
 
             private void CloseMeeting(String topic)
             {
-                Server.CloseMeeting(topic, this.UserId);
+                try
+                {
+                    Server.CloseMeeting(topic, this.UserId);
+                } catch(ServerException e)
+                {
+                    Console.Write(e.getErrorMessage());
+                } 
             }
 
             private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)

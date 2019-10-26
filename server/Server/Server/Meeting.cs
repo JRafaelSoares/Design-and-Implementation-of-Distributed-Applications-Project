@@ -63,7 +63,7 @@ namespace MSDAD
             public Location Location { get; }
             public DateTime Date { get; }
 
-            public List<String> UserIds;
+            public List<String> UserIds = new List<String>();
 
             public Slot(Location location, DateTime date)
             {

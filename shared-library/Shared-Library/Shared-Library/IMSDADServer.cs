@@ -16,12 +16,11 @@ namespace MSDAD
             String CloseMeeting(String topic, String userId);
         }
 
-        [Serializable]
-        public class CannotJoinMeetingException : ApplicationException
+        public class ServerException : ApplicationException
         {
             public String messageError;
 
-            public CannotJoinMeetingException(string m)
+            public ServerException(string m)
             {
                 this.messageError = m;
             }
@@ -30,58 +29,30 @@ namespace MSDAD
             {
                 return this.messageError;
             }
-
         }
 
         [Serializable]
-        public class ClientNotCoordenatorException : ApplicationException
+        public class CannotJoinMeetingException : ServerException
         {
-            public String messageError;
-
-            public ClientNotCoordenatorException(string m)
-            {
-                this.messageError = m;
-            }
-
-            public String getErrorMessage()
-            {
-                return this.messageError;
-            }
-
+            public CannotJoinMeetingException(string m) : base(m) { }
         }
 
         [Serializable]
-        public class TopicDoesNotExistException : ApplicationException
+        public class ClientNotCoordenatorException : ServerException
         {
-            public String messageError;
-
-            public TopicDoesNotExistException(string m)
-            {
-                this.messageError = m;
-            }
-
-            public String getErrorMessage()
-            {
-                return this.messageError;
-            }
-
+            public ClientNotCoordenatorException(string m) : base(m) { }
         }
 
         [Serializable]
-        public class NoMeetingAvailableException : ApplicationException
+        public class TopicDoesNotExistException : ServerException
         {
-            public String messageError;
+            public TopicDoesNotExistException(string m) : base(m) { }
+        }
 
-            public NoMeetingAvailableException(string m)
-            {
-                this.messageError = m;
-            }
-
-            public String getErrorMessage()
-            {
-                return this.messageError;
-            }
-
+        [Serializable]
+        public class NoMeetingAvailableException : ServerException
+        {
+            public NoMeetingAvailableException(string m) : base(m) { }
         }
 
         public interface IMSDADServerPuppet
