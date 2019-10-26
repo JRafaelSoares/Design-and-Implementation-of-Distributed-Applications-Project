@@ -15,5 +15,11 @@ namespace MSDAD
 
             void CloseMeeting(String topic, String userId);
         }
+
+        public interface IMSDADServerPuppet
+        {
+            void addRoom(String location, uint capacity, String roomName);
+
+        }
     }
 }

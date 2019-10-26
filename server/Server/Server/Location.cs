@@ -45,8 +45,9 @@ namespace MSDAD
 
         class Location
         {
-            private string Name { get; }
 
+            static Dictionary<String, Location> Locations = new Dictionary<string, Location>();
+            private string Name { get; }
             private HashSet<Room> Rooms { get; }
 
             public Location(string name, HashSet<Room> rooms)
@@ -58,6 +59,25 @@ namespace MSDAD
             {
                 this.Name = name;
                 this.Rooms = new HashSet<Room>();
+            }
+
+            public bool Equals(Location other)
+            {
+                return this.Name == other.Name;
+            }
+
+            public void addRoom(Room room)
+            {
+                Rooms.Add(room);
+            }
+
+            public static Location GetRoomFromName(String name)
+            {
+                return Locations[name];
+            }
+            public static void addLocation(Location location)
+            {
+                Locations.Add(location.Name, location);
             }
         }
 

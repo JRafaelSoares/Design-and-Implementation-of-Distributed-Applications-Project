@@ -9,7 +9,7 @@ namespace MSDAD
 {
     namespace Server
     {
-        class Server : MarshalByRefObject, IMSDADServer
+        class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet
         {
             private Dictionary<String, Meeting> Meetings;
             static void Main(string[] args)
@@ -23,36 +23,39 @@ namespace MSDAD
 
             void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
-
-                if (invitees == null)
+                lock (this)
                 {
-                    Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
-                }
-                else
-                {
-                    Meetings.Add(topic, new MeetingInvitees(coordId, topic, minParticipants, slots, invitees));
+                    if (invitees == null)
+                    {
+                        Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
+                    }
+                    else
+                    {
+                        Meetings.Add(topic, new MeetingInvitees(coordId, topic, minParticipants, slots, invitees));
+                    }
                 }
             }
 
-
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
-
-                Meeting m = Meetings[topic];
-                List<Slot> MeetingSlots = m.Slots;
-                List<Slot> ClientSlots = m.ParseSlots(slots);
-
-                foreach (Slot cslot in ClientSlots)
+                lock (this)
                 {
-                    foreach (Slot mslot in MeetingSlots)
+                    Meeting m = Meetings[topic];
+                    List<Slot> MeetingSlots = m.Slots;
+                    List<Slot> ClientSlots = Slot.ParseSlots(slots);
+
+                    foreach (Slot cslot in ClientSlots)
                     {
-                        if (cslot.Equals(mslot))
+                        foreach (Slot mslot in MeetingSlots)
                         {
-                            mslot.addUserId(userId);
+                            if (cslot.Equals(mslot))
+                            {
+                                mslot.addUserId(userId);
+                                break;
+                            }
                         }
                     }
-                }    
-
+                }
             }
 
             String IMSDADServer.ListMeetings(String userId)
@@ -71,9 +74,25 @@ namespace MSDAD
 
             void IMSDADServer.CloseMeeting(String topic, String userId)
             {
-                Meeting meeting = Meetings[topic];
+                lock (this)
+                {
+                    Meeting meeting = Meetings[topic];
 
-                throw new NotImplementedException();
+                    throw new NotImplementedException();
+                }
+            }
+
+            void IMSDADServerPuppet.addRoom(String location, uint capacity, String roomName)
+            {
+                lock (this) {
+                    Location local = Location.GetRoomFromName(location);
+                    if (local == null)
+                    {
+                        local = new Location(location);
+                        Location.addLocation(local);
+                    }
+                    local.addRoom(new Room(roomName, capacity));
+                }
             }
 
         }
