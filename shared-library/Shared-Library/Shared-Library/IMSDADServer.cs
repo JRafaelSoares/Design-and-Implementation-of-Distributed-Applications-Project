@@ -7,7 +7,7 @@ namespace MSDAD
     {
         public interface IMSDADServer
         {
-            void CreateMeeting(string coordId, string topic, int minParticipants, HashSet<string> slots, HashSet<string> invitees = null);
+            void CreateMeeting(string coordId, string topic, uint minParticipants, HashSet<string> slots, HashSet<string> invitees = null);
 
             void JoinMeeting(String topic, HashSet<string> slots, String userId);
 

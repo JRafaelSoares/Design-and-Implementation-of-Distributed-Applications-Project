@@ -38,7 +38,7 @@ namespace MSDAD
                 Server.CloseMeeting(topic, this.UserId);
             }
 
-            public void CreateMeeting(String topic, uint min_atendees, ISet<String> slots, ISet<String> invitees)
+            public void CreateMeeting(String topic, uint min_atendees, HashSet<String> slots, HashSet<String> invitees)
             {
                 Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
             }
