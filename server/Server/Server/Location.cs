@@ -55,6 +55,8 @@ namespace MSDAD
 
         class Location
         {
+            static Dictionary<String, Location> Locations = new Dictionary<string, Location>();
+
             public string Name { get; }
 
             public List<Room> Rooms { get; }
@@ -76,9 +78,29 @@ namespace MSDAD
                 return Rooms;
             }
 
+
+            public void addRoom(Room room)
+            {
+                Rooms.Add(room);
+            }
+
             public override string ToString()
             {
                 return this.Name;
+            }
+            public bool Equals(Location other)
+            {
+                return this.Name == other.Name;
+            }
+
+
+            public static Location GetRoomFromName(String name)
+            {
+                return Locations[name];
+            }
+            public static void addLocation(Location location)
+            {
+                Locations.Add(location.Name, location);
             }
         }
 

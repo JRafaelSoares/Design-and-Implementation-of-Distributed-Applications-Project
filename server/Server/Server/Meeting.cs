@@ -17,7 +17,7 @@ namespace MSDAD
                 this.CoordenatorID = coordenatorID;
                 this.Topic = topic;
                 this.MinParticipants = minParticipants;
-                this.Slots = ParseSlots(slots);
+                this.Slots = Slot.ParseSlots(slots);
             }
 
             //Set Methods
@@ -38,18 +38,6 @@ namespace MSDAD
             public override int GetHashCode()
             {
                 return this.Topic.GetHashCode();
-            }
-
-            public List<Slot> ParseSlots(List<String> slots)
-            {
-                List<Slot> hashSlot = new List<Slot>();
-
-                foreach(string slot in slots)
-                {
-                    hashSlot.Add(new Slot(slot));
-                }
-
-                return hashSlot;
             }
 
             public virtual String ToString(String userID)
@@ -85,7 +73,9 @@ namespace MSDAD
 
             public Slot(string slots)
             {
-                //TODO
+                String[] items = slots.Split(',');
+                this.Location = Location.GetRoomFromName(items[0]);
+                this.Date = DateTime.Parse(items[1]);
             }
 
             public override string ToString()
@@ -129,6 +119,38 @@ namespace MSDAD
             {
                 UserIds.RemoveRange(UserIds.Count - usersToRemove, UserIds.Count);
             }
+
+            public static List<Slot> ParseSlots(List<String> slots)
+            {
+                List<Slot> hashSlot = new List<Slot>();
+
+                foreach (string slot in slots)
+                {
+                    hashSlot.Add(new Slot(slot));
+                }
+
+                return hashSlot;
+            }
+        }
+        class MeetingInvitees : Meeting
+        {
+            private HashSet<String> Invitees { get; } = new HashSet<String>();
+
+            public MeetingInvitees(String coordenatorID, String topic, uint minParticipants, List<string> slots, HashSet<String> invitees) : base(coordenatorID, topic, minParticipants, slots)
+            {
+                this.Invitees = invitees;
+            }
+
+            public override String ToString(String userID)
+            {
+                return base.ToString(userID) + Invitees.ToString();
+            }
+
+            public override bool CanJoin(string userId)
+            {
+                return (Invitees.Contains(userId) || userId == this.CoordenatorID);
+            }
         }
     }
 }
+    

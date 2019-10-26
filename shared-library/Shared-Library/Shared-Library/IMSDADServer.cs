@@ -54,6 +54,12 @@ namespace MSDAD
         {
             public NoMeetingAvailableException(string m) : base(m) { }
         }
+
+        public interface IMSDADServerPuppet
+        {
+            void addRoom(String location, uint capacity, String roomName);
+
+        }
     }
 }
 
