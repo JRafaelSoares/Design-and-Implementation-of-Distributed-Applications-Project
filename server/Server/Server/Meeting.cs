@@ -9,10 +9,10 @@ namespace MSDAD
         {
             private String CoordenatorID { get; }
             private String Topic { get; }
-            private int MinParticipants { get; }
-            private HashSet<Slot> Slots { get; }
+            private uint MinParticipants { get; }
+            private List<Slot> Slots { get; }
 
-            public Meeting(String coordenatorID, String topic, int minParticipants, HashSet<string> slots)
+            public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
             {
                 this.CoordenatorID = coordenatorID;
                 this.Topic = topic;
@@ -40,9 +40,9 @@ namespace MSDAD
                 return this.Topic.GetHashCode();
             }
 
-            public HashSet<Slot> ParseSlots(HashSet<string> slots)
+            public List<Slot> ParseSlots(List<String> slots)
             {
-                HashSet<Slot> hashSlot = new HashSet<Slot>();
+                List<Slot> hashSlot = new List<Slot>();
 
                 foreach(string slot in slots)
                 {
@@ -52,12 +52,19 @@ namespace MSDAD
                 return hashSlot;
             }
 
+            public virtual String MeetingToString(String userID)
+            {
+                return String.Format("{0}\n{1}\n{2}\n{3}\n\n", this.CoordenatorID, this.Topic, this.MinParticipants, this.Slots.ToString());
+            }
+
         }
 
         class Slot
         {
             private Location Location { get; }
             private DateTime Date { get; }
+
+            private List<String> UserIds;
 
             public Slot(Location location, DateTime date)
             {
@@ -69,6 +76,12 @@ namespace MSDAD
             {
 
             }
+
+            public void addUserId(String userId)
+            {
+                UserIds.Add(userId);
+            }
+
 
         }
     }
