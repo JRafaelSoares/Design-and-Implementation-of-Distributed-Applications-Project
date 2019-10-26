@@ -75,6 +75,11 @@ namespace MSDAD
                 Rooms.Sort((x, y) => x.Capacity.CompareTo(y.Capacity));
                 return Rooms;
             }
+
+            public override string ToString()
+            {
+                return this.Name;
+            }
         }
 
     }

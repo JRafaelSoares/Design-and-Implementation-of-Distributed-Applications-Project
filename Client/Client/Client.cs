@@ -1,6 +1,7 @@
 ﻿using MSDAD.Shared;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
@@ -8,45 +9,101 @@ namespace MSDAD
 {
     namespace Client
     {
+        public delegate String parseDelegate();
+
         class Client
         {
             private readonly IMSDADServer Server;
             private readonly String UserId;
+
             public Client(IMSDADServer server, String userId)
             {
                 this.Server = server;
                 this.UserId = userId;
             }
 
-            public void ListMeetings()
+            private void ListMeetings()
             {
-                IList<String> meetings = Server.ListMeetings(this.UserId);
+                String meetings = Server.ListMeetings(this.UserId);
                 
-                foreach (String s in meetings)
-                {
-                    Console.WriteLine(s);   
-                }
+                Console.WriteLine(meetings);   
+                
             }
 
-            public void JoinMeeting(String topic, HashSet<String> slots)
+            private void JoinMeeting(String topic, List<String> slots)
             {
                 Server.JoinMeeting(topic, slots, this.UserId);
             }
 
-            public void CloseMeeting(String topic)
+            private void CloseMeeting(String topic)
             {
                 Server.CloseMeeting(topic, this.UserId);
             }
 
-            public void CreateMeeting(String topic, uint min_atendees, HashSet<String> slots, HashSet<String> invitees)
+            private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)
             {
                 Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
             }
 
-            public void Wait(int milliseconds)
+            private void Wait(int milliseconds)
             {
                 Thread.Sleep(milliseconds);
             }
+
+            public void ParseScript(parseDelegate reader)
+            {
+                String line = null;
+                while(( line = reader.Invoke() ) != null)
+                {
+                    String[] items = line.Split(' ');
+                    switch(items[0])
+                    {
+                        case "list":
+                            this.ListMeetings();
+                            break;
+
+                        case "close":
+                            this.CloseMeeting(items[1]);
+                            break;
+
+                        case "join":
+                            List<String> slots = new List<string>();
+                            for (uint i = 2; i < items.Length; ++i)
+                            {
+                                slots.Add(items[i]);
+                            }
+                            this.JoinMeeting(items[1], slots);
+                            break;
+
+                        case "create":
+                            int numSlots = Int32.Parse(items[3]);
+                            int numInvitees = Int32.Parse(items[4]);
+
+                            slots = new List<string>();
+                            HashSet<String> invitees =  numInvitees == 0 ?  null : new HashSet<string>();
+                            uint j;
+                            for (j = 5; j < 5 + numSlots; ++j)
+                            {
+                                slots.Add(items[j]);
+                            }
+                            for (; j < 5 + numSlots + numInvitees; ++j)
+                            {
+                                invitees.Add(items[j]);
+                            }
+                            this.CreateMeeting(items[1], UInt32.Parse(items[2]), slots, invitees);
+                            break;
+
+                        case "wait":
+                            this.Wait(Int32.Parse(items[1]));
+                            break;
+
+                        default:
+                            Console.WriteLine("Invalid command: {0}", items[0]);
+                            break;
+                    }
+                }
+
+            } 
 
             static void Main(string[] args)
             {
@@ -58,7 +115,7 @@ namespace MSDAD
 
                 TcpChannel channel = new TcpChannel();
                 ChannelServices.RegisterChannel(channel, false);
-                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
+                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[2]);
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
@@ -67,6 +124,19 @@ namespace MSDAD
                 else
                 {
                     Client client = new Client(server, args[2]);
+                  
+                    if (File.Exists(args[3]))
+                    {
+                        client.ParseScript(File.OpenText(args[3]).ReadLine);
+                       
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error: File provided does not exist");
+                    }
+                    client.ParseScript(Console.ReadLine);
+                    
+                    
 
                 }
 
