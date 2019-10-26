@@ -17,6 +17,18 @@ namespace MSDAD
             {
                 this.Invitees = invitees;
             }
+
+            public override String MeetingToString(String userID)
+            {
+                if (Invitees.Contains(userID))
+                {
+                   return base.MeetingToString(userID);
+                }
+                else
+                {
+                    return "";
+                }
+            }
         }
     }
 }

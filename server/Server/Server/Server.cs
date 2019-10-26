@@ -19,7 +19,6 @@ namespace MSDAD
                 RemotingConfiguration.RegisterWellKnownServiceType(typeof(Server), "MSDADServer", WellKnownObjectMode.Singleton);
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
-
             }
 
             void IMSDADServer.CreateMeeting(string coordId, string topic, int minParticipants, HashSet<string> slots, HashSet<string> invitees)
@@ -42,9 +41,15 @@ namespace MSDAD
                 throw new NotImplementedException();
             }
 
-            IList<String> IMSDADServer.ListMeetings(String userId)
+            String IMSDADServer.ListMeetings(String userId)
             {
-                throw new NotImplementedException();
+                String meetings = "";
+                foreach(Meeting meeting in Meetings.Values)
+                {
+                    meetings += meeting.ToString();
+                }
+
+                return meetings;
             }
 
             void IMSDADServer.CloseMeeting(String topic, String userId)

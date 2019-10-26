@@ -11,7 +11,7 @@ namespace MSDAD
 
             void JoinMeeting(String topic, HashSet<string> slots, String userId);
 
-            IList<String> ListMeetings(String userId);
+            String ListMeetings(String userId);
 
             void CloseMeeting(String topic, String userId);
         }
