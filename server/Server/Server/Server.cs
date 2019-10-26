@@ -9,13 +9,13 @@ namespace MSDAD
 {
     namespace Server
     {
-        class Server : MarshalByRefObject, IMSDADServer
+        class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet
         {
             private Dictionary<String, Meeting> Meetings;
             static void Main(string[] args)
             {
                 TcpChannel channel = new TcpChannel(8086);
-                ChannelServices.RegisterChannel(channel, false); 
+                ChannelServices.RegisterChannel(channel, false);
                 RemotingConfiguration.RegisterWellKnownServiceType(typeof(Server), "MSDADServer", WellKnownObjectMode.Singleton);
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
@@ -44,7 +44,7 @@ namespace MSDAD
                     throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.");
                 }
                 List<Slot> MeetingSlots = m.Slots;
-                List<Slot> ClientSlots = m.ParseSlots(slots);
+                List<Slot> ClientSlots = Slot.ParseSlots(slots);
 
                 foreach (Slot cslot in ClientSlots)
                 {
@@ -55,14 +55,14 @@ namespace MSDAD
                             mslot.addUserId(userId);
                         }
                     }
-                }    
+                }
 
             }
 
             String IMSDADServer.ListMeetings(String userId)
             {
                 String meetings = "";
-                foreach(Meeting meeting in Meetings.Values)
+                foreach (Meeting meeting in Meetings.Values)
                 {
                     if (meeting.CanJoin(userId))
                     {
@@ -79,19 +79,20 @@ namespace MSDAD
                 try
                 {
                     meeting = Meetings[topic];
-                } catch (KeyNotFoundException)
+                }
+                catch (KeyNotFoundException)
                 {
                     throw new TopicDoesNotExistException("Topic " + topic + " does not exist");
                 }
 
-                if(meeting.CoordenatorID != userId)
+                if (meeting.CoordenatorID != userId)
                 {
                     throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.");
                 }
 
                 List<Slot> slots = meeting.getSortedSlots();
 
-                foreach(Slot slot in slots)
+                foreach (Slot slot in slots)
                 {
                     if (slot.getNumUsers() < meeting.MinParticipants)
                     {
@@ -122,6 +123,20 @@ namespace MSDAD
 
             }
 
+            void IMSDADServerPuppet.addRoom(String location, uint capacity, String roomName)
+            {
+                lock (this)
+                {
+                    Location local = Location.GetRoomFromName(location);
+                    if (local == null)
+                    {
+                        local = new Location(location);
+                        Location.addLocation(local);
+                    }
+                    local.addRoom(new Room(roomName, capacity));
+                }
+
+            }
         }
     }
 }
