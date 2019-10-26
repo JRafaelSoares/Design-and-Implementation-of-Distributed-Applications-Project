@@ -52,9 +52,14 @@ namespace MSDAD
                 return hashSlot;
             }
 
-            public virtual String MeetingToString(String userID)
+            public virtual String ToString(String userID)
             {
                 return String.Format("{0}\n{1}\n{2}\n{3}\n\n", this.CoordenatorID, this.Topic, this.MinParticipants, this.Slots.ToString());
+            }
+
+            public virtual bool CanJoin(String userId)
+            {
+                return true;
             }
 
         }
