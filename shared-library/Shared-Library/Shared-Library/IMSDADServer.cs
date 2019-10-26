@@ -15,5 +15,23 @@ namespace MSDAD
 
             String CloseMeeting(String topic, String userId);
         }
+
+        [Serializable]
+        public class CannotJoinMeetingException : ApplicationException
+        {
+            public String messageError;
+
+            public CannotJoinMeetingException(string m)
+            {
+                this.messageError = m;
+            }
+
+            public String getErrorMessage()
+            {
+                return this.messageError;
+            }
+
+        }
     }
 }
+

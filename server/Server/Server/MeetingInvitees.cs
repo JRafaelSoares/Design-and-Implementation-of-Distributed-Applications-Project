@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MSDAD.Shared;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace MSDAD
 
             public override bool CanJoin(string userId)
             {
-                return Invitees.Contains(userId) || userId == this.CoordenatorID;
+                return (Invitees.Contains(userId) || userId == this.CoordenatorID);
             }
         }
     }

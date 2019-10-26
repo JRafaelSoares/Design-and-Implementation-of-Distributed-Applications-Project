@@ -39,6 +39,10 @@ namespace MSDAD
             {
 
                 Meeting m = Meetings[topic];
+                if (!m.CanJoin(userId))
+                {
+                    throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.");
+                }
                 List<Slot> MeetingSlots = m.Slots;
                 List<Slot> ClientSlots = m.ParseSlots(slots);
 

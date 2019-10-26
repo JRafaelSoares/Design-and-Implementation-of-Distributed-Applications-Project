@@ -32,7 +32,13 @@ namespace MSDAD
 
             private void JoinMeeting(String topic, List<String> slots)
             {
-                Server.JoinMeeting(topic, slots, this.UserId);
+                try
+                {
+                    Server.JoinMeeting(topic, slots, this.UserId);
+                } catch (CannotJoinMeetingException e)
+                {
+                    Console.WriteLine(e.getErrorMessage());
+                }
             }
 
             private void CloseMeeting(String topic)
