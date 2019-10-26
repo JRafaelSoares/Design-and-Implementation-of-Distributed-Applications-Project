@@ -18,16 +18,14 @@ namespace MSDAD
                 this.Invitees = invitees;
             }
 
-            public override String MeetingToString(String userID)
+            public override String ToString(String userID)
             {
-                if (Invitees.Contains(userID))
-                {
-                   return base.MeetingToString(userID);
-                }
-                else
-                {
-                    return "";
-                }
+                return base.ToString(userID) + Invitees.ToString();
+            }
+
+            public override bool CanJoin(string userId)
+            {
+                return Invitees.Contains(userId) || userId == this.CoordenatorID;
             }
         }
     }
