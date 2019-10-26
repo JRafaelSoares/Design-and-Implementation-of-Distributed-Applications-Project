@@ -11,19 +11,13 @@ namespace MSDAD
             private String Topic { get; }
             private int MinParticipants { get; }
             private HashSet<Slot> Slots { get; }
-            private HashSet<String> Invitees { get; } = new HashSet<String>();
 
-            public Meeting(String coordenatorID, String topic, int minParticipants, HashSet<Slot> slots, HashSet<String> invitees = null)
+            public Meeting(String coordenatorID, String topic, int minParticipants, HashSet<string> slots)
             {
                 this.CoordenatorID = coordenatorID;
                 this.Topic = topic;
                 this.MinParticipants = minParticipants;
-                this.Slots = slots;
-
-                if (invitees != null)
-                {
-                    this.Invitees = invitees;
-                }
+                this.Slots = ParseSlots(slots);
             }
 
             //Set Methods
@@ -46,6 +40,18 @@ namespace MSDAD
                 return this.Topic.GetHashCode();
             }
 
+            public HashSet<Slot> ParseSlots(HashSet<string> slots)
+            {
+                HashSet<Slot> hashSlot = new HashSet<Slot>();
+
+                foreach(string slot in slots)
+                {
+                    hashSlot.Add(new Slot(slot));
+                }
+
+                return hashSlot;
+            }
+
         }
 
         class Slot
@@ -57,6 +63,11 @@ namespace MSDAD
             {
                 this.Location = location;
                 this.Date = date;
+            }
+
+            public Slot(string slots)
+            {
+
             }
 
         }
