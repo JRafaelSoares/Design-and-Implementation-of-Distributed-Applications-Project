@@ -5,6 +5,12 @@ namespace MSDAD
 {
     namespace Shared
     {
+
+        public interface IMSDADPCS
+        {
+            void CreateProcess(String type, String args);
+        }
+
         public interface IMSDADServer
         {
             void CreateMeeting(string coordId, string topic, uint minParticipants, List<String> slots, HashSet<string> invitees = null);

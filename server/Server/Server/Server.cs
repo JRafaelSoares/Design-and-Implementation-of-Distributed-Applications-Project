@@ -110,6 +110,7 @@ namespace MSDAD
 
                     //FIXME What happens if no room is avaliable
                     //FIXME Which Users get to Join the Meeting?
+                    //FIXME ALgorithm
                     Slot slot = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants)
                                              .First(x => x.GetAvailableRoom(meeting.MinParticipants) != null);
 
