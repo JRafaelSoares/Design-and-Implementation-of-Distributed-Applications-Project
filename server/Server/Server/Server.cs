@@ -74,6 +74,8 @@ namespace MSDAD
                     {
                         slot.AddUserId(userId);
                     }
+
+                    meeting.AddUser(userId);
                 }
 
             }
