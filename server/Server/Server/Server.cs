@@ -74,6 +74,8 @@ namespace MSDAD
                     {
                         slot.AddUserId(userId);
                     }
+
+                    meeting.AddUser(userId);
                 }
 
             }
@@ -120,7 +122,8 @@ namespace MSDAD
                     }
 
                     slot.GetAvailableRoom(meeting.MinParticipants).AddBooking(slot.Date);
-                    Meetings.Remove(topic);
+                    meeting.Close();
+                    //Meetings.Remove(topic);
                     return;
                 }
             }
