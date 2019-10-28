@@ -71,6 +71,7 @@ namespace MSDAD
             public String Topic { get; }
             public uint MinParticipants { get; }
             public List<Slot> Slots { get; }
+            public List<String> Users = new List<String>();
             public enum State { Open, Closed }
             private State curState = State.Open;
 
@@ -102,9 +103,11 @@ namespace MSDAD
                 return this.Topic.GetHashCode();
             }
 
+            //Falta testar os ToStrings das listas e se nao funcionar acrescenta-se metodo
+
             public virtual String ToString(String userID)
             {
-                return String.Format("{0}\n{1}\n{2}\n{3}\n{4}\n\n", this.CoordenatorID, this.Topic, this.MinParticipants, this.Slots.ToString(), this.curState.ToString("g"));
+                return String.Format("{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n\n", this.CoordenatorID, this.Topic, this.MinParticipants, this.Slots.ToString(), this.Users.ToString(), this.curState.ToString("g"));
             }
 
             public virtual bool CanJoin(String userId)
@@ -119,9 +122,14 @@ namespace MSDAD
                 return Slots;
             }
 
+            public void AddUser(String UserId)
+            {
+                Users.Add(UserId);
+            }
+
             public void Close()
             {
-                curState = State.Closed;
+                this.curState = State.Closed;
             }
 
             public State getState()
