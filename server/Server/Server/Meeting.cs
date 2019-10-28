@@ -36,15 +36,54 @@ namespace MSDAD
                 UserIds.Add(userId);
             }
 
-            public int GetNumUsers()
+            public uint GetNumUsers()
             {
-                return UserIds.Count;
+                return (uint)UserIds.Count;
             }
 
             public Room GetAvailableRoom(uint minNumParticipants)
             {
                 return Location.Rooms.Where(x => x.Capacity >= minNumParticipants).First(x => !x.IsBooked(Date));
 
+            }
+
+            public Room GetRoomClosestNumParticipants(uint numParticipants)
+            {
+                List<Room> rooms = Location.Rooms.Where(x => !x.IsBooked(Date)).ToList();
+                rooms.Sort((x, y) => x.Capacity.CompareTo(y.Capacity));
+
+                Room closestRoom = null;
+                foreach(Room room in Location.Rooms)
+                {
+                    if (room.Capacity == numParticipants)
+                    {
+                        return room;
+                    }
+
+                    if (room.Capacity < numParticipants)
+                    {
+                        if(closestRoom == null)
+                        {
+                            return room;
+                        }
+
+                        else
+                        {
+                            if (Math.Abs(numParticipants-room.Capacity) > Math.Abs(closestRoom.Capacity-numParticipants))
+                            {
+                                return closestRoom;
+                            }
+                            else
+                            {
+                                return room;
+                            }
+                        }
+                    }
+
+                    closestRoom = room;
+                }
+
+                return closestRoom;
             }
 
             public void RemoveLastUsers(int usersToRemove)

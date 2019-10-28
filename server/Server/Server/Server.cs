@@ -110,17 +110,26 @@ namespace MSDAD
 
                     //FIXME What happens if no room is avaliable
                     //FIXME Which Users get to Join the Meeting?
-                    Slot slot = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants)
-                                             .First(x => x.GetAvailableRoom(meeting.MinParticipants) != null);
 
-                    if (slot == null)
+                    List<Slot> slots = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants)
+                                             .Where(x => x.GetAvailableRoom(meeting.MinParticipants) != null).ToList();
+
+                    if (slots == null)
                     {
                         throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled");
                     }
 
-                    slot.GetAvailableRoom(meeting.MinParticipants).AddBooking(slot.Date);
-                    Meetings.Remove(topic);
-                    return;
+                    List<Tuple<Room, DateTime>> rooms = new List<Tuple<Room, DateTime>>();
+
+                    foreach (Slot slot in slots)
+                    {
+                        rooms.Append(new Tuple<Room, DateTime>(slot.GetRoomClosestNumParticipants(slot.GetNumUsers()), slot.Date));
+                    }
+
+                    rooms.Sort((x, y) => x.Item1.Capacity.CompareTo(y.Item1.Capacity));
+
+                    rooms.First().Item1.AddBooking(rooms.First().Item2);
+
                 }
             }
 
