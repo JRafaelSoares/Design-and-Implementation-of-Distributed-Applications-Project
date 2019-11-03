@@ -44,12 +44,12 @@ namespace MSDAD
             public bool IsBooked(DateTime time)
             {
                 //Problem with contains probable >.>
-                return Bookings.Contains(time);
+                return Bookings.Contains(time.Date);
             }
 
             public void AddBooking(DateTime time)
             {
-                Bookings.Add(time);
+                Bookings.Add(time.Date);
             }
         }
 

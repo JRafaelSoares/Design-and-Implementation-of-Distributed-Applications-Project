@@ -5,6 +5,8 @@ using System.IO;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
+using System.IO;
+
 namespace MSDAD
 {
     namespace Client
@@ -61,7 +63,13 @@ namespace MSDAD
             private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)
             {
                 SafeSleep();
-                Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
+                try
+                {
+                    Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
+                } catch(CannotCreateMeetingException e)
+                {
+                    Console.WriteLine(e.GetErrorMessage());
+                }
             }
 
             private void Wait(int milliseconds)
@@ -155,9 +163,9 @@ namespace MSDAD
                 {
                     Client client = new Client(server, args[0]);
                   
-                    if (File.Exists(args[3]))
+                    if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[3]))
                     {
-                        StreamReader reader = File.OpenText(args[3]);
+                        StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory +  args[3]);
                         client.ParseScript(reader.ReadLine);
                         reader.Close();
                        

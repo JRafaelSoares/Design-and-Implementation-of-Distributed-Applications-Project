@@ -17,19 +17,19 @@ namespace MSDAD
             public Slot(Location location, DateTime date)
             {
                 this.Location = location;
-                this.Date = date;
+                this.Date = date.Date;
             }
 
             public Slot(string slots)
             {
                 String[] items = slots.Split(',');
                 this.Location = Location.FromName(items[0]);
-                this.Date = DateTime.Parse(items[1]);
+                this.Date = DateTime.Parse(items[1]).Date;
             }
 
             public override string ToString()
             {
-                return String.Format("({0},{1})", Date.ToString(), Location.ToString());
+                return String.Format("({0},{1})", Date.ToShortDateString(), Location.ToString());
             }
 
             public void AddUserId(String userId)
@@ -144,8 +144,6 @@ namespace MSDAD
             {
                 return this.Topic.GetHashCode();
             }
-
-            //Falta testar os ToStrings das listas e se nao funcionar acrescenta-se metodo
 
             public  virtual String ToString()
             {

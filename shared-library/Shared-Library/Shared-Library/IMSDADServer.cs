@@ -60,6 +60,19 @@ namespace MSDAD
         }
 
         [Serializable]
+        public class CannotCreateMeetingException : ServerException
+        {
+            public CannotCreateMeetingException(String m) : base(m) { }
+            public CannotCreateMeetingException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+        }
+
+        [Serializable]
+        public class NoSuchMeetingException : ServerException
+        {
+            public NoSuchMeetingException(String m) : base(m) { }
+            public NoSuchMeetingException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+        }
+        [Serializable]
         public class ClientNotCoordenatorException : ServerException
         {
             public ClientNotCoordenatorException(String m) : base(m) { }
