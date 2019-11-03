@@ -16,11 +16,11 @@ namespace PCS
             switch (type)
             {
                 case "Server":
-                    proc.StartInfo.FileName = "server/server.exe";
+                    proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "server/server.exe";
                     break;
 
                 case "Client:":
-                    proc.StartInfo.FileName = "client/client.exe";
+                    proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "client/client.exe";
                     break;
             }
         proc.Start();
