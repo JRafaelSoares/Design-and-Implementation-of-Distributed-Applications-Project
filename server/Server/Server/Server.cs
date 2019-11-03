@@ -61,7 +61,7 @@ namespace MSDAD
 
             void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
-                lock(this) {
+                lock(Meetings) {
                     if (invitees == null)
                     {
                         Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
@@ -76,7 +76,7 @@ namespace MSDAD
 
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
-                lock (this)
+                lock (Meetings[topic])
                 {
                     Meeting meeting = Meetings[topic];
                     if (!meeting.CanJoin(userId))
@@ -86,7 +86,10 @@ namespace MSDAD
 
                     foreach (Slot slot in meeting.Slots.Intersect(Slot.ParseSlots(slots)))
                     {
-                        slot.AddUserId(userId);
+                        lock (slot)
+                        {
+                            slot.AddUserId(userId);
+                        }
                     }
 
                     meeting.AddUser(userId);
@@ -107,7 +110,7 @@ namespace MSDAD
 
             void IMSDADServer.CloseMeeting(String topic, String userId)
             {
-                lock (this)
+                lock (Meetings)
                 {
                     Meeting meeting;
                     try
