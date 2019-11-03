@@ -216,6 +216,13 @@ namespace MSDAD
                     local.AddRoom(new Room(roomName, capacity));
                 }
             }
+            void IMSDADServerPuppet.Crash() {
+                System.Environment.Exit(1);
+            }
+            void IMSDADServerPuppet.Freeze() { }
+            void IMSDADServerPuppet.Unfreeze() { }
+            void IMSDADServerPuppet.Status() { }
+
         }
     }
 }

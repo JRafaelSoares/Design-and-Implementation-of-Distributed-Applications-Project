@@ -103,7 +103,13 @@ namespace MSDAD
         public interface IMSDADServerPuppet
         {
             void AddRoom(String location, uint capacity, String roomName);
+            void Status();
 
+            void Crash();
+
+            void Freeze();
+
+            void Unfreeze();
         }
     }
 }
