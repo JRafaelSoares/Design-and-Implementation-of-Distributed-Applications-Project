@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,18 +10,30 @@ namespace MSDAD
         class WorkQueue
         {
             public delegate void WorkDelegate();
-            public List<Thread> workQueue = new List<Thread>();
-            private object AddLock = new object();
 
+            public ConcurrentQueue<AutoResetEvent> eventQueue = new ConcurrentQueue<AutoResetEvent>();
+
+            private AutoResetEvent notEmpty = new AutoResetEvent(true);
+            
             public void addWork(WorkDelegate work)
             {
-                lock (AddLock)
+                AutoResetEvent myEvent = new AutoResetEvent(false);
+                eventQueue.Enqueue(myEvent);
+                AutoResetEvent head;
+                eventQueue.TryPeek(out head);
+                while (head != myEvent)
                 {
-                    workQueue.Add(Thread.CurrentThread);
-                    while (workQueue.IndexOf(Thread.CurrentThread) != 0) Monitor.Wait(AddLock);
-                    workQueue.Remove(Thread.CurrentThread);
+                    myEvent.WaitOne();
+                    eventQueue.TryPeek(out head);
+                }
+                lock (this)
+                {
                     work();
-                    Monitor.Pulse(AddLock);
+                    //Remove my event from queue
+                    eventQueue.TryDequeue(out head);
+
+                    eventQueue.TryPeek(out head);
+                    head.Set();
                 }
             }
         }
