@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace MSDAD
 {
@@ -110,9 +111,9 @@ namespace MSDAD
             public String Topic { get; }
             public uint MinParticipants { get; }
             public List<Slot> Slots { get; }
-            public List<String> Users = new List<String>();
+            public List<String> Users;
             public enum State { Open, Closed }
-            private State curState = State.Open;
+            public State CurState { get; set;}
 
             public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
             {
@@ -120,6 +121,8 @@ namespace MSDAD
                 this.Topic = topic;
                 this.MinParticipants = minParticipants;
                 this.Slots = Slot.ParseSlots(slots);
+                this.Users = new List<String>();
+                this.CurState = State.Open;
             }
 
             //Set Methods
@@ -144,9 +147,24 @@ namespace MSDAD
 
             //Falta testar os ToStrings das listas e se nao funcionar acrescenta-se metodo
 
-            public virtual String ToString(String userID)
+            public  virtual String ToString()
             {
-                return String.Format("{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n\n", this.CoordenatorID, this.Topic, this.MinParticipants, this.Slots.ToString(), this.Users.ToString(), this.curState.ToString("g"));
+                StringBuilder builder = new StringBuilder();
+                builder.Append(String.Format("Coordenator: {0}\n", this.CoordenatorID));
+                builder.Append(String.Format("Topic: {0}\n", this.Topic));
+                builder.Append(String.Format("MinParticipants: {0}\n", this.MinParticipants));
+                builder.Append("Slots:\n");
+                foreach (Slot s in this.Slots)
+                {
+                    builder.Append(s.ToString() + "\n");
+                }
+                builder.Append("Users:\n");
+                foreach (String u in this.Users)
+                {
+                    builder.Append(u + "\n");
+                }
+                builder.Append(String.Format("State: {0}\n", this.CurState.ToString()));
+                return builder.ToString();
             }
 
             public virtual bool CanJoin(String userId)
@@ -168,27 +186,27 @@ namespace MSDAD
 
             public void Close()
             {
-                this.curState = State.Closed;
-            }
-
-            public State getState()
-            {
-                return this.curState;
+                this.CurState = State.Closed;
             }
         }
 
         class MeetingInvitees : Meeting
         {
-            private HashSet<String> Invitees { get; } = new HashSet<String>();
+            public HashSet<String> Invitees { get; }
 
             public MeetingInvitees(String coordenatorID, String topic, uint minParticipants, List<string> slots, HashSet<String> invitees) : base(coordenatorID, topic, minParticipants, slots)
             {
                 this.Invitees = invitees;
             }
 
-            public override String ToString(String userID)
+            public override String ToString()
             {
-                return base.ToString(userID) + Invitees.ToString();
+                StringBuilder builder = new StringBuilder();
+                builder.Append("Invitees:\n");
+                foreach (String invitee in Invitees) {
+                    builder.Append(invitee + "\n");
+                }
+                return base.ToString() + builder.ToString(); ;
             }
 
             public override bool CanJoin(string userId)

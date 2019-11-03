@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 
 namespace MSDAD
 {
@@ -21,7 +23,7 @@ namespace MSDAD
 
             void CloseMeeting(String topic, String userId);
         }
-
+        [Serializable]
         public class ServerException : ApplicationException
         {
             public String messageError;
@@ -31,34 +33,51 @@ namespace MSDAD
                 this.messageError = m;
             }
 
+            protected ServerException(SerializationInfo info, StreamingContext context) : base(info, context)
+            {
+                messageError = info.GetString("messageError");
+            }
+
             public String GetErrorMessage()
             {
                 return this.messageError;
+            }
+
+            [SecurityPermissionAttribute(SecurityAction.Demand,
+            SerializationFormatter = true)]
+            public override void GetObjectData(SerializationInfo info, StreamingContext context)
+            {
+                base.GetObjectData(info, context);
+                info.AddValue("messageError", messageError);
             }
         }
 
         [Serializable]
         public class CannotJoinMeetingException : ServerException
         {
-            public CannotJoinMeetingException(string m) : base(m) { }
+            public CannotJoinMeetingException(String m) : base(m) { }
+            public CannotJoinMeetingException(SerializationInfo info, StreamingContext context) : base(info, context) { }
         }
 
         [Serializable]
         public class ClientNotCoordenatorException : ServerException
         {
-            public ClientNotCoordenatorException(string m) : base(m) { }
+            public ClientNotCoordenatorException(String m) : base(m) { }
+            public ClientNotCoordenatorException(SerializationInfo info, StreamingContext context) : base(info, context) { }
         }
 
         [Serializable]
         public class TopicDoesNotExistException : ServerException
         {
-            public TopicDoesNotExistException(string m) : base(m) { }
+            public TopicDoesNotExistException(String m) : base(m) { }
+            public TopicDoesNotExistException(SerializationInfo info, StreamingContext context) : base(info, context) { }
         }
 
         [Serializable]
         public class NoMeetingAvailableException : ServerException
-        {
-            public NoMeetingAvailableException(string m) : base(m) { }
+        { 
+            public NoMeetingAvailableException(String m) : base(m) { }
+            public NoMeetingAvailableException(SerializationInfo info, StreamingContext context) : base(info, context) { }
         }
 
         public interface IMSDADServerPuppet

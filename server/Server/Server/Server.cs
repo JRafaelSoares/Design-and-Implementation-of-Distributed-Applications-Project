@@ -40,9 +40,23 @@ namespace MSDAD
                 TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
                 ChannelServices.RegisterChannel(channel, false);
                 Server server = new Server(Int32.Parse(args[0]), UInt32.Parse(args[2]), float.Parse(args[3]), float.Parse(args[4]));
-                RemotingServices.Marshal(server, "MSDADServer", typeof(Server));
+                RemotingServices.Marshal(server, "MSDADServer", typeof(IMSDADServer));
+                //Testing purposes only
+                IMSDADServerPuppet puppet = (IMSDADServerPuppet) server;
+                puppet.AddRoom("Lisbon", 5, "1");
+                puppet.AddRoom("Porto", 2, "1");
+                puppet.AddRoom("Lisbon", 2, "2");
+
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
+            }
+
+            //Leases never expire
+            public override object InitializeLifetimeService()
+            {
+
+                return null;
+
             }
 
             void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
@@ -67,7 +81,7 @@ namespace MSDAD
                     Meeting meeting = Meetings[topic];
                     if (!meeting.CanJoin(userId))
                     {
-                        throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.");
+                        throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.\n");
                     }
 
                     foreach (Slot slot in meeting.Slots.Intersect(Slot.ParseSlots(slots)))
@@ -102,12 +116,12 @@ namespace MSDAD
                     }
                     catch (KeyNotFoundException)
                     {
-                        throw new TopicDoesNotExistException("Topic " + topic + " does not exist");
+                        throw new TopicDoesNotExistException("Topic " + topic + " does not exist\n");
                     }
 
                     if (meeting.CoordenatorID != userId)
                     {
-                        throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.");
+                        throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.\n");
                     }
 
                     //FIXME What happens if no room is avaliable
@@ -118,7 +132,7 @@ namespace MSDAD
 
                     if (slots == null)
                     {
-                        throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled");
+                        throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled\n");
                     }
 
                     List<Tuple<Room, DateTime>> rooms = new List<Tuple<Room, DateTime>>();

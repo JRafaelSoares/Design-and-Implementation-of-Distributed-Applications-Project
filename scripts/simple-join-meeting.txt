@@ -1,0 +1,3 @@
+list
+join ola 2 Lisbon,2020-01-02 Porto,2020-01-02
+list

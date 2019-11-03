@@ -97,7 +97,8 @@ namespace MSDAD
 
                         case "join":
                             List<String> slots = new List<string>();
-                            for (uint i = 2; i < items.Length; ++i)
+                            uint slotCount = UInt32.Parse(items[2]);
+                            for (uint i = 3; i < 3 + slotCount; ++i)
                             {
                                 slots.Add(items[i]);
                             }
@@ -136,7 +137,7 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length != 5)
+                if(args.Length != 4)
                 {
                     System.Console.WriteLine("<usage> Client username client_url server_url script_file");
                     Environment.Exit(1);
@@ -144,7 +145,7 @@ namespace MSDAD
 
                 TcpChannel channel = new TcpChannel();
                 ChannelServices.RegisterChannel(channel, false);
-                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[2]);
+                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), "tcp://" + args[2] + "/MSDADServer");
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
@@ -152,7 +153,7 @@ namespace MSDAD
                 }
                 else
                 {
-                    Client client = new Client(server, args[2]);
+                    Client client = new Client(server, args[0]);
                   
                     if (File.Exists(args[3]))
                     {

@@ -96,7 +96,9 @@ namespace MSDAD
 
             public static Location FromName(String name)
             {
-                return Locations[name];
+                Location value = null;
+                bool found = Locations.TryGetValue(name, out value);
+                return value;
             }
 
             public static void AddLocation(Location location)
