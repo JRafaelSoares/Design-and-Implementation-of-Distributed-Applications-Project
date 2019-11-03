@@ -87,6 +87,13 @@ namespace MSDAD
         }
 
         [Serializable]
+        public class LocationDoesNotExistException : ServerException
+        {
+            public LocationDoesNotExistException(String m) : base(m) { }
+            public LocationDoesNotExistException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+        }
+
+        [Serializable]
         public class NoMeetingAvailableException : ServerException
         { 
             public NoMeetingAvailableException(String m) : base(m) { }

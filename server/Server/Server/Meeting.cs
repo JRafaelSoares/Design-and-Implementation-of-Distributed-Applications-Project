@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MSDAD.Shared;
 
 namespace MSDAD
 {
@@ -24,12 +25,21 @@ namespace MSDAD
             {
                 String[] items = slots.Split(',');
                 this.Location = Location.FromName(items[0]);
+                if (this.Location == null)
+                {
+                    throw new LocationDoesNotExistException("Location given does not exist");
+                }
                 this.Date = DateTime.Parse(items[1]).Date;
             }
 
-            public override string ToString()
+            public virtual new string ToString()
             {
-                return String.Format("({0},{1})", Date.ToShortDateString(), Location.ToString());
+                String s = String.Format("(Date:{0}, Location:{1})\nAtendees: ", Date.ToShortDateString(), Location.ToString());
+                foreach (String u in UserIds)
+                {
+                    s += u + " ";
+                }
+                return s + "\n";
             }
 
             public void AddUserId(String userId)
@@ -39,52 +49,21 @@ namespace MSDAD
 
             public uint GetNumUsers()
             {
-                return (uint)UserIds.Count;
+                Room avaliable = GetBestAvaliableRoom();
+                uint roomCapacity = avaliable == null ? 0 : avaliable.Capacity;
+                return Math.Min((uint)UserIds.Count, roomCapacity);
             }
+
+            public Room GetBestAvaliableRoom()
+            {
+                return Location.GetBestRoomForDate(this.Date.Date);
+            }
+
 
             public Room GetAvailableRoom(uint minNumParticipants)
             {
                 return Location.Rooms.Where(x => x.Capacity >= minNumParticipants).First(x => !x.IsBooked(Date));
 
-            }
-
-            public Room GetRoomClosestNumParticipants(uint numParticipants)
-            {
-                List<Room> rooms = Location.Rooms.Where(x => !x.IsBooked(Date)).ToList();
-                rooms.Sort((x, y) => x.Capacity.CompareTo(y.Capacity));
-
-                Room closestRoom = null;
-                foreach(Room room in Location.Rooms)
-                {
-                    if (room.Capacity == numParticipants)
-                    {
-                        return room;
-                    }
-
-                    if (room.Capacity < numParticipants)
-                    {
-                        if(closestRoom == null)
-                        {
-                            return room;
-                        }
-
-                        else
-                        {
-                            if (Math.Abs(numParticipants-room.Capacity) > Math.Abs(closestRoom.Capacity-numParticipants))
-                            {
-                                return closestRoom;
-                            }
-                            else
-                            {
-                                return room;
-                            }
-                        }
-                    }
-
-                    closestRoom = room;
-                }
-
-                return closestRoom;
             }
 
             public void RemoveLastUsers(int usersToRemove)
@@ -103,6 +82,44 @@ namespace MSDAD
 
                 return hashSlot;
             }
+
+            public override bool Equals(Object obj)
+            {
+                //Check for null and compare run-time types.
+                if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+                {
+                    return false;
+                }
+                else
+                {
+                    Slot s = (Slot)obj;
+                    return s.Date == this.Date && s.Location == this.Location;
+                }
+            }
+        }
+
+        class ClosedSlot : Slot
+        {
+
+            //Room set when meeting is closed
+            public Room Room { get; set; }
+
+            public ClosedSlot(Slot slot, Room room) : base(slot.Location, slot.Date)
+            {
+                this.UserIds = slot.UserIds;
+                this.Room = room;
+            }
+
+            public virtual new string ToString()
+            {
+                String s = String.Format("(Date:{0}, Location:{1}, Room: ({2}))\nAtendees: ", Date.ToShortDateString(), Location.ToString(), Room.ToString());
+                foreach (String u in UserIds)
+                {
+                    s += u + " ";
+                }
+                return s + "\n";
+            }
+
         }
 
         class Meeting
@@ -110,9 +127,9 @@ namespace MSDAD
             public String CoordenatorID { get; }
             public String Topic { get; }
             public uint MinParticipants { get; }
-            public List<Slot> Slots { get; }
+            public List<Slot> Slots { get; set; }
             public List<String> Users;
-            public enum State { Open, Closed }
+            public enum State { Open, Closed, Canceled }
             public State CurState { get; set;}
 
             public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
@@ -145,7 +162,7 @@ namespace MSDAD
                 return this.Topic.GetHashCode();
             }
 
-            public  virtual String ToString()
+            public  virtual new String ToString()
             {
                 StringBuilder builder = new StringBuilder();
                 builder.Append(String.Format("Coordenator: {0}\n", this.CoordenatorID));
@@ -154,7 +171,16 @@ namespace MSDAD
                 builder.Append("Slots:\n");
                 foreach (Slot s in this.Slots)
                 {
-                    builder.Append(s.ToString() + "\n");
+                    if (CurState == State.Closed)
+                    {
+
+                        builder.Append(((ClosedSlot)s).ToString() + "\n");
+                    }
+                    else
+                    {
+
+                        builder.Append(s.ToString() + "\n");
+                    }
                 }
                 builder.Append("Users:\n");
                 foreach (String u in this.Users)
@@ -182,10 +208,18 @@ namespace MSDAD
                 Users.Add(UserId);
             }
 
-            public void Close()
+            public void Close(Slot chosenSlot, uint numUsers)
             {
                 this.CurState = State.Closed;
+
+                Room bestRoom = chosenSlot.Location.GetBestFittingRoomForCapacity(chosenSlot.Date, numUsers);
+                bestRoom.AddBooking(chosenSlot.Date);
+                
+                this.Slots = new List<Slot>{ new ClosedSlot(chosenSlot, bestRoom) };
+
+                Users = Users.GetRange(0, (int)numUsers);
             }
+
         }
 
         class MeetingInvitees : Meeting

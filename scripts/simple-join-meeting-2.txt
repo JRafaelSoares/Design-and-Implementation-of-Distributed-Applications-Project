@@ -1,0 +1,3 @@
+list
+join ola 1 Lisbon,2020-01-02 
+list

@@ -1,0 +1,3 @@
+list
+create ola 1 3 0 Lisbon,2020-01-02 Porto,2020-01-02 Madrid,2014-01-02
+list

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using MSDAD.Shared;
 namespace MSDAD
 {
     namespace Server
@@ -11,7 +11,6 @@ namespace MSDAD
 
             public uint Capacity { get; }
 
-            //FIXME Make only date;
             private HashSet<DateTime> Bookings { get; }
 
             public Room(string name, uint capacity)
@@ -51,11 +50,16 @@ namespace MSDAD
             {
                 Bookings.Add(time.Date);
             }
+
+            public override string ToString()
+            {
+                return String.Format("Name: {0} Capacity: {1}", this.Name, Capacity.ToString());
+            }
         }
 
         class Location
         {
-            static readonly Dictionary<String, Location> Locations = new Dictionary<string, Location>();
+            public static readonly Dictionary<String, Location> Locations = new Dictionary<string, Location>();
 
             public string Name { get; }
 
@@ -96,8 +100,7 @@ namespace MSDAD
 
             public static Location FromName(String name)
             {
-                Location value = null;
-                bool found = Locations.TryGetValue(name, out value);
+                Locations.TryGetValue(name, out Location value);
                 return value;
             }
 
@@ -105,7 +108,43 @@ namespace MSDAD
             {
                 Locations.Add(location.Name, location);
             }
-        }
 
+            public Room GetBestRoomForDate(DateTime date)
+            {
+                uint currentBest = UInt32.MinValue;
+                Room best = null;
+                foreach (Room r in Rooms)
+                {
+                    if (!r.IsBooked(date))
+                    {
+                        if(r.Capacity > currentBest)
+                        {
+                            best = r;
+                            currentBest = r.Capacity;
+                        }
+                    }
+                }
+                return best;
+            }
+
+            public Room GetBestFittingRoomForCapacity(DateTime date, uint capacity)
+            {
+                int currentBest = Int32.MaxValue;
+                Room best = null;
+                foreach (Room r in Rooms)
+                {
+                    if (!r.IsBooked(date) && r.Capacity >= capacity)
+                    {
+                        if (((int)r.Capacity - (int)capacity) < currentBest)
+                        {
+                            best = r;
+                            currentBest = (int)r.Capacity;
+                        }
+                    }
+                }
+                return best;
+            }
+
+        }
     }
 }

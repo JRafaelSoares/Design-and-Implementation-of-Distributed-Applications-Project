@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MSDAD
 {
@@ -13,27 +11,31 @@ namespace MSDAD
 
             public ConcurrentQueue<AutoResetEvent> eventQueue = new ConcurrentQueue<AutoResetEvent>();
 
-            private AutoResetEvent notEmpty = new AutoResetEvent(true);
-            
-            public void addWork(WorkDelegate work)
+            public void AddWork(WorkDelegate work)
             {
                 AutoResetEvent myEvent = new AutoResetEvent(false);
                 eventQueue.Enqueue(myEvent);
-                AutoResetEvent head;
-                eventQueue.TryPeek(out head);
+                eventQueue.TryPeek(out AutoResetEvent head);
                 while (head != myEvent)
                 {
+                    head.Dispose();
                     myEvent.WaitOne();
                     eventQueue.TryPeek(out head);
                 }
+                head.Dispose();
+                work();
+
+                //lock to prevent race condition
                 lock (this)
                 {
-                    work();
                     //Remove my event from queue
                     eventQueue.TryDequeue(out head);
-
+                    head.Dispose();
+                    //signal next thread
                     eventQueue.TryPeek(out head);
                     head.Set();
+                    head.Dispose();
+                    
                 }
             }
         }

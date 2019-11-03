@@ -5,7 +5,6 @@ using System.IO;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
-using System.IO;
 
 namespace MSDAD
 {
@@ -67,6 +66,9 @@ namespace MSDAD
                 {
                     Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
                 } catch(CannotCreateMeetingException e)
+                {
+                    Console.WriteLine(e.GetErrorMessage());
+                } catch (LocationDoesNotExistException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
                 }

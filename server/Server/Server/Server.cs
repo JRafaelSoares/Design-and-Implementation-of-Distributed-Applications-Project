@@ -29,8 +29,8 @@ namespace MSDAD
 
             private static readonly Random random = new Random();
 
-            private static int ticket = 0;
-            private static int currentTicket = 0;
+            //private static int ticket = 0;
+            //private static int currentTicket = 0;
 
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay)
             {
@@ -57,6 +57,8 @@ namespace MSDAD
                 //Testing purposes only
                 IMSDADServerPuppet puppet = (IMSDADServerPuppet) server;
                 puppet.AddRoom("Lisbon", 5, "1");
+                puppet.AddRoom("Lisbon", 1, "3");
+                puppet.AddRoom("Lisbon", 3, "4");
                 puppet.AddRoom("Porto", 2, "1");
                 puppet.AddRoom("Lisbon", 2, "2");
                 System.Console.WriteLine(String.Format("ServerId: {0} port: {1} max faults: {2} min delay: {3} max delay: {4}", args[0], args[1], args[2], args[3], args[4]));
@@ -70,7 +72,7 @@ namespace MSDAD
                 return null;
             }
 
-            void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
+            void ServerCreateMeeting (string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
                 /*int myTicket = Interlocked.Increment(ref ticket) -1 ;
                 while (myTicket != currentTicket)
@@ -80,7 +82,7 @@ namespace MSDAD
                 this.ServerCreateMeeting(coordId, topic, minParticipants, slots, invitees);
                 Interlocked.Increment(ref currentTicket);*/
 
-                workQueue.addWork(delegate ()
+                workQueue.AddWork(delegate ()
                 {
                     this.ServerCreateMeeting(coordId, topic, minParticipants, slots, invitees);
 
@@ -88,12 +90,12 @@ namespace MSDAD
 
 
             }
-            void ServerCreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
+
+            void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
                 Thread.Sleep(random.Next(MinDelay, MaxDelay));
                 lock(CreateMeetingLock) {
-                    Meeting meeting;
-                    bool found = Meetings.TryGetValue(topic, out meeting);
+                    bool found = Meetings.TryGetValue(topic, out Meeting meeting);
                     if (found)
                     {
                         throw new CannotCreateMeetingException("A meeting with that topic already exists");
@@ -113,9 +115,8 @@ namespace MSDAD
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
             {
                 Thread.Sleep(random.Next(MinDelay, MaxDelay));
-                Meeting meeting;
-                bool found = Meetings.TryGetValue(topic, out meeting);
-                
+                bool found = Meetings.TryGetValue(topic, out Meeting meeting);
+
                 if (!found)
                 {
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
@@ -129,7 +130,8 @@ namespace MSDAD
                         throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.\n");
                     }
 
-                    foreach (Slot slot in meeting.Slots.Intersect(Slot.ParseSlots(slots)))
+                    List<Slot> givenSlots = Slot.ParseSlots(slots);
+                    foreach (Slot slot in meeting.Slots.Where(x => givenSlots.Contains(x)))
                     {
                        
                         slot.AddUserId(userId);
@@ -154,14 +156,14 @@ namespace MSDAD
             void IMSDADServer.CloseMeeting(String topic, String userId)
             {
                 Thread.Sleep(random.Next(MinDelay, MaxDelay));
-                Meeting meeting;
-                
-                bool found = Meetings.TryGetValue(topic, out meeting);
+
+
+                bool found = Meetings.TryGetValue(topic, out Meeting meeting);
                 meeting = Meetings[topic];
                 if (! found) { 
                     throw new TopicDoesNotExistException("Topic " + topic + " does not exist\n");
                 }
-                lock (meeting)
+                lock (Location.Locations)
                 {
                     
                     if (meeting.CoordenatorID != userId)
@@ -169,27 +171,34 @@ namespace MSDAD
                         throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.\n");
                     }
 
-                    //FIXME What happens if no room is avaliable
-                    //FIXME Which Users get to Join the Meeting?
 
-                    List<Slot> slots = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants)
-                                             .Where(x => x.GetAvailableRoom(meeting.MinParticipants) != null).ToList();
+                    List<Slot> slots = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants).ToList();
 
-                    if (slots == null)
+                                             
+                    if (slots.Count == 0)
                     {
+                        meeting.CurState = Meeting.State.Canceled;
                         throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled\n");
                     }
 
-                    List<Tuple<Room, DateTime>> rooms = new List<Tuple<Room, DateTime>>();
-
-                    foreach (Slot slot in slots)
+                    slots.Sort((x, y) =>
                     {
-                        rooms.Append(new Tuple<Room, DateTime>(slot.GetRoomClosestNumParticipants(slot.GetNumUsers()), slot.Date));
-                    }
+                        return (int) (y.GetNumUsers() - x.GetNumUsers());
+                    });
+                    
+                    uint numUsers = slots[0].GetNumUsers();
+                    DateTime date = slots[0].Date;
 
-                    rooms.Sort((x, y) => x.Item1.Capacity.CompareTo(y.Item1.Capacity));
+                    //Only those with maximum potential users
+                    slots = slots.Where(x => x.GetNumUsers() == numUsers).ToList();
 
-                    rooms.First().Item1.AddBooking(rooms.First().Item2);
+                    //Tightest room
+                    slots.Sort((x, y) =>
+                    {
+                        return (int) (x.Location.GetBestFittingRoomForCapacity(date, numUsers).Capacity - y.Location.GetBestFittingRoomForCapacity(date, numUsers).Capacity);
+                    });
+
+                    meeting.Close(slots[0], numUsers);
 
                 }
             }
