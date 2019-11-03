@@ -117,7 +117,7 @@ namespace MSDAD
                 Thread.Sleep(random.Next(MinDelay, MaxDelay));
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
-                if (!found)
+                if (!found || meeting.CurState != Meeting.State.Open)
                 {
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
@@ -157,12 +157,12 @@ namespace MSDAD
             {
                 Thread.Sleep(random.Next(MinDelay, MaxDelay));
 
-
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
-                meeting = Meetings[topic];
-                if (! found) { 
-                    throw new TopicDoesNotExistException("Topic " + topic + " does not exist\n");
+                
+                if ((!found) || meeting.CurState != Meeting.State.Open) { 
+                    throw new TopicDoesNotExistException("Topic " + topic + " cannot be closed\n");
                 }
+                
                 lock (Location.Locations)
                 {
                     
