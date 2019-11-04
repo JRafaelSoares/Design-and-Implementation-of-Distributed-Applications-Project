@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MSDAD.Shared;
 
 namespace MSDAD
 {
-    namespace Server
+    namespace Shared
     {
-        class Slot
+        public class Slot
         {
             public Location Location { get; }
             public DateTime Date { get; }
@@ -98,7 +97,7 @@ namespace MSDAD
             }
         }
 
-        class ClosedSlot : Slot
+        public class ClosedSlot : Slot
         {
 
             //Room set when meeting is closed
@@ -122,7 +121,7 @@ namespace MSDAD
 
         }
 
-        class Meeting
+        public class Meeting
         {
             public String CoordenatorID { get; }
             public String Topic { get; }
@@ -222,7 +221,7 @@ namespace MSDAD
 
         }
 
-        class MeetingInvitees : Meeting
+        public class MeetingInvitees : Meeting
         {
             public HashSet<String> Invitees { get; }
 

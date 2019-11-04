@@ -56,11 +56,11 @@ namespace MSDAD
                 RemotingServices.Marshal(server, "MSDADServer", typeof(IMSDADServer));
                 //Testing purposes only
                 IMSDADServerPuppet puppet = (IMSDADServerPuppet) server;
-                puppet.AddRoom("Lisbon", 5, "1");
-                puppet.AddRoom("Lisbon", 1, "3");
-                puppet.AddRoom("Lisbon", 3, "4");
+                puppet.AddRoom("Lisboa", 5, "1");
+                puppet.AddRoom("Lisboa", 1, "3");
+                puppet.AddRoom("Lisboa", 3, "4");
                 puppet.AddRoom("Porto", 2, "1");
-                puppet.AddRoom("Lisbon", 2, "2");
+                puppet.AddRoom("Lisboa", 2, "2");
                 System.Console.WriteLine(String.Format("ServerId: {0} port: {1} max faults: {2} min delay: {3} max delay: {4}", args[0], args[1], args[2], args[3], args[4]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();

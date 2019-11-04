@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using MSDAD.Shared;
 namespace MSDAD
 {
-    namespace Server
+    namespace Shared
     {
-        class Room
+        public class Room
         {
             public string Name { get; }
 
@@ -57,7 +56,7 @@ namespace MSDAD
             }
         }
 
-        class Location
+        public class Location
         {
             public static readonly Dictionary<String, Location> Locations = new Dictionary<string, Location>();
 
