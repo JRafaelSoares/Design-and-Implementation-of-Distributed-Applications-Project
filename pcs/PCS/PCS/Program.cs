@@ -5,34 +5,37 @@ using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 
-namespace PCS
+namespace MSDAD
 {
-    class PCS : MarshalByRefObject, IMSDADPCS
+    namespace PCS
     {
-        void IMSDADPCS.CreateProcess(String type, String args)
+        class PCS : MarshalByRefObject, IMSDADPCS
         {
-            Process proc = new Process();
-            proc.StartInfo.Arguments = args;
-            switch (type)
+            void IMSDADPCS.CreateProcess(String type, String args)
             {
-                case "Server":
-                    proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "Server.exe";
-                    break;
+                Process proc = new Process();
+                proc.StartInfo.Arguments = args;
+                switch (type)
+                {
+                    case "Server":
+                        proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "Server.exe";
+                        break;
 
-                case "Client:":
-                    proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "Client.exe";
-                    break;
+                    case "Client:":
+                        proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "Client.exe";
+                        break;
+                }
+                Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Server.exe", args);
+                proc.Dispose();
             }
-        proc.Start();
-        proc.Dispose();
-        }
-        static void Main()
-        {
-            TcpChannel channel = new TcpChannel(10000);
-            ChannelServices.RegisterChannel(channel, false); 
-            RemotingConfiguration.RegisterWellKnownServiceType(typeof(IMSDADPCS), "PCS", WellKnownObjectMode.Singleton);
-            Console.WriteLine(" < enter > para sair...");
-            Console.ReadLine();
+            static void Main()
+            {
+                TcpChannel channel = new TcpChannel(10000);
+                ChannelServices.RegisterChannel(channel, false);
+                RemotingConfiguration.RegisterWellKnownServiceType(typeof(IMSDADPCS), "PCS", WellKnownObjectMode.Singleton);
+                Console.WriteLine(" < enter > para sair...");
+                Console.ReadLine();
+            }
         }
     }
 }

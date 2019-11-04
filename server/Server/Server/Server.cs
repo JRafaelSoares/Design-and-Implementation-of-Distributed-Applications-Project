@@ -43,24 +43,24 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length != 5)
+                if(args.Length != 6)
                 {
-                    Console.WriteLine("<Usage> Server server_id port max_faults min_delay max_delay");
+                    Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay ");
                     return;
                 }
 
                 //Initialize Server
-                TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
+                TcpChannel channel = new TcpChannel(Int32.Parse(args[2]));
                 ChannelServices.RegisterChannel(channel, false);
-                Server server = new Server(args[0], UInt32.Parse(args[2]), Int32.Parse(args[3]), Int32.Parse(args[4]));
-                RemotingServices.Marshal(server, "MSDADServer", typeof(IMSDADServer));
+                Server server = new Server(args[0], UInt32.Parse(args[3]), Int32.Parse(args[4]), Int32.Parse(args[5]));
+                RemotingServices.Marshal(server, args[1], typeof(Server));
                 //Testing purposes only
                 IMSDADServerPuppet puppet = (IMSDADServerPuppet) server;
-                puppet.AddRoom("Lisboa", 5, "1");
-                puppet.AddRoom("Lisboa", 1, "3");
-                puppet.AddRoom("Lisboa", 3, "4");
+                puppet.AddRoom("Lisbon", 5, "1");
+                puppet.AddRoom("Lisbon", 1, "3");
+                puppet.AddRoom("Lisbon", 3, "4");
                 puppet.AddRoom("Porto", 2, "1");
-                puppet.AddRoom("Lisboa", 2, "2");
+                puppet.AddRoom("Lisbon", 2, "2");
                 System.Console.WriteLine(String.Format("ServerId: {0} port: {1} max faults: {2} min delay: {3} max delay: {4}", args[0], args[1], args[2], args[3], args[4]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
@@ -91,9 +91,19 @@ namespace MSDAD
 
             }
 
+            private void SafeSleep()
+            {
+                int mili = random.Next(MinDelay, MaxDelay);
+                if (mili != 0)
+                {
+                    Thread.Sleep(mili);
+                }
+                return;
+            }
+
             void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
-                Thread.Sleep(random.Next(MinDelay, MaxDelay));
+                SafeSleep();
                 lock(CreateMeetingLock) {
                     bool found = Meetings.TryGetValue(topic, out Meeting meeting);
                     if (found)
@@ -112,9 +122,9 @@ namespace MSDAD
             }
 
 
-            void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId)
+            void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
-                Thread.Sleep(random.Next(MinDelay, MaxDelay));
+                SafeSleep();
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
                 if (!found || meeting.CurState != Meeting.State.Open)
@@ -134,15 +144,16 @@ namespace MSDAD
                     foreach (Slot slot in meeting.Slots.Where(x => givenSlots.Contains(x)))
                     {
                        
-                        slot.AddUserId(userId);
+                        slot.AddUserId(userId, timestamp);
                         
                     }
-                    meeting.AddUser(userId);
+                    meeting.AddUser(userId, timestamp);
                 }
             }
 
             String IMSDADServer.ListMeetings(String userId)
             {
+                SafeSleep();
                 Thread.Sleep(random.Next(MinDelay, MaxDelay));
                 String meetings = "";
                 foreach (Meeting meeting in Meetings.Values.Where(x => x.CanJoin(userId)).ToList())
@@ -155,7 +166,7 @@ namespace MSDAD
 
             void IMSDADServer.CloseMeeting(String topic, String userId)
             {
-                Thread.Sleep(random.Next(MinDelay, MaxDelay));
+                SafeSleep();
 
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
                 

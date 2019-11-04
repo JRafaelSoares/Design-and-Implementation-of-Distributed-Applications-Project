@@ -32,6 +32,7 @@
             this.CommandBox = new System.Windows.Forms.TextBox();
             this.Run = new System.Windows.Forms.Button();
             this.OpenFile = new System.Windows.Forms.Button();
+            this.Shutdown = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // textBox1
@@ -73,11 +74,22 @@
             this.OpenFile.UseVisualStyleBackColor = true;
             this.OpenFile.Click += new System.EventHandler(this.button1_Click_1);
             // 
+            // Shutdown
+            // 
+            this.Shutdown.Location = new System.Drawing.Point(630, 351);
+            this.Shutdown.Name = "Shutdown";
+            this.Shutdown.Size = new System.Drawing.Size(75, 23);
+            this.Shutdown.TabIndex = 4;
+            this.Shutdown.Text = "Shutdown";
+            this.Shutdown.UseVisualStyleBackColor = true;
+            this.Shutdown.Click += new System.EventHandler(this.button1_Click_3);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.Shutdown);
             this.Controls.Add(this.OpenFile);
             this.Controls.Add(this.Run);
             this.Controls.Add(this.CommandBox);
@@ -95,6 +107,7 @@
         private System.Windows.Forms.TextBox CommandBox;
         private System.Windows.Forms.Button Run;
         private System.Windows.Forms.Button OpenFile;
+        private System.Windows.Forms.Button Shutdown;
     }
 }
 

@@ -8,12 +8,29 @@ namespace MSDAD
     namespace Shared
     {
         [Serializable]
+        public class Join
+        {
+            public String UserId { get; }
+            public DateTime Timestamp { get; }
+
+            public Join(String userId, DateTime timestamp)
+            {
+                this.UserId = userId;
+                this.Timestamp = timestamp;
+            }
+
+            public override string ToString()
+            {
+                return String.Format("({0},{1})",UserId.ToString() , Timestamp.ToString());
+            }
+        }
+        [Serializable]
         public class Slot
         {
             public Location Location { get; }
             public DateTime Date { get; }
 
-            public List<String> UserIds = new List<String>();
+            public List<Join> UserIds = new List<Join>();
 
             public Slot(Location location, DateTime date)
             {
@@ -35,16 +52,16 @@ namespace MSDAD
             public virtual new string ToString()
             {
                 String s = String.Format("(Date:{0}, Location:{1})\nAtendees: ", Date.ToShortDateString(), Location.ToString());
-                foreach (String u in UserIds)
+                foreach (Join u in UserIds)
                 {
-                    s += u + " ";
+                    s += u.ToString() + " ";
                 }
                 return s + "\n";
             }
 
-            public void AddUserId(String userId)
+            public void AddUserId(String userId, DateTime timestamp)
             {
-                UserIds.Add(userId);
+                UserIds.Add(new Join(userId, timestamp));
             }
 
             public uint GetNumUsers()
@@ -105,18 +122,19 @@ namespace MSDAD
             //Room set when meeting is closed
             public Room Room { get; set; }
 
-            public ClosedSlot(Slot slot, Room room) : base(slot.Location, slot.Date)
+            public ClosedSlot(Slot slot, Room room, List<Join> joins) : base(slot.Location, slot.Date)
             {
                 this.UserIds = slot.UserIds;
                 this.Room = room;
+                this.UserIds = joins;
             }
 
             public virtual new string ToString()
             {
                 String s = String.Format("(Date:{0}, Location:{1}, Room: ({2}))\nAtendees: ", Date.ToShortDateString(), Location.ToString(), Room.ToString());
-                foreach (String u in UserIds)
+                foreach (Join u in UserIds)
                 {
-                    s += u + " ";
+                    s += u.ToString() + " ";
                 }
                 return s + "\n";
             }
@@ -130,8 +148,8 @@ namespace MSDAD
             public String Topic { get; }
             public uint MinParticipants { get; }
             public List<Slot> Slots { get; set; }
-            public List<String> Users;
-            public enum State { Open, Closed, Canceled }
+            public List<Join> Users;
+            public enum State { Open = 1, Pending = 2, Closed = 3, Canceled = 4 }
             public State CurState { get; set;}
 
             public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
@@ -140,7 +158,7 @@ namespace MSDAD
                 this.Topic = topic;
                 this.MinParticipants = minParticipants;
                 this.Slots = Slot.ParseSlots(slots);
-                this.Users = new List<String>();
+                this.Users = new List<Join>();
                 this.CurState = State.Open;
             }
 
@@ -185,9 +203,9 @@ namespace MSDAD
                     }
                 }
                 builder.Append("Users:\n");
-                foreach (String u in this.Users)
+                foreach (Join u in this.Users)
                 {
-                    builder.Append(u + "\n");
+                    builder.Append(u.ToString() + "\n");
                 }
                 builder.Append(String.Format("State: {0}\n", this.CurState.ToString()));
                 return builder.ToString();
@@ -205,9 +223,9 @@ namespace MSDAD
                 return Slots;
             }
 
-            public void AddUser(String UserId)
+            public void AddUser(String UserId, DateTime timestamp)
             {
-                Users.Add(UserId);
+                Users.Add(new Join(UserId, timestamp));
             }
 
             public void Close(Slot chosenSlot, uint numUsers)
@@ -217,9 +235,13 @@ namespace MSDAD
                 Room bestRoom = chosenSlot.Location.GetBestFittingRoomForCapacity(chosenSlot.Date, numUsers);
                 bestRoom.AddBooking(chosenSlot.Date);
                 
-                this.Slots = new List<Slot>{ new ClosedSlot(chosenSlot, bestRoom) };
-
+                Users.Sort((x, y) =>
+                {
+                    return x.Timestamp <= y.Timestamp ? -1 : 1;
+                });
                 Users = Users.GetRange(0, (int)numUsers);
+
+                this.Slots = new List<Slot> { new ClosedSlot(chosenSlot, bestRoom, Users) };
             }
 
         }

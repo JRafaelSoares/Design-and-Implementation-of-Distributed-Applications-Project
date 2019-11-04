@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
@@ -12,7 +13,7 @@ namespace MSDAD
     {
         public delegate String parseDelegate();
 
-        class Client
+        class Client : MarshalByRefObject
         {
             private readonly IMSDADServer Server;
             private readonly String UserId;
@@ -40,8 +41,8 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {
-                    Server.JoinMeeting(topic, slots, this.UserId);
-                } catch (ServerException e)
+                    Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
+                } catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
                 }
@@ -53,7 +54,7 @@ namespace MSDAD
                 try
                 {
                     Server.CloseMeeting(topic, this.UserId);
-                } catch(ServerException e)
+                } catch(MSDAD.Shared.ServerException e)
                 {
                     Console.Write(e.GetErrorMessage());
                 } 
@@ -147,15 +148,15 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length != 4)
+                if(args.Length != 5)
                 {
-                    System.Console.WriteLine("<usage> Client username client_url server_url script_file");
+                    System.Console.WriteLine("<usage> Client username client_port network_name server_url script_file");
                     Environment.Exit(1);
                 }
 
-                TcpChannel channel = new TcpChannel();
+                TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
                 ChannelServices.RegisterChannel(channel, false);
-                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), "tcp://" + args[2] + "/MSDADServer");
+                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
@@ -164,10 +165,11 @@ namespace MSDAD
                 else
                 {
                     Client client = new Client(server, args[0]);
-                  
-                    if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[3]))
+                    RemotingServices.Marshal(client, args[2], typeof(Client));
+
+                    if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
-                        StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory +  args[3]);
+                        StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory +  args[4]);
                         client.ParseScript(reader.ReadLine);
                         reader.Close();
                        
