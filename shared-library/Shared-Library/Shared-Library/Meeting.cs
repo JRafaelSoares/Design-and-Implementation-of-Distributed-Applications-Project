@@ -7,6 +7,7 @@ namespace MSDAD
 {
     namespace Shared
     {
+        [Serializable]
         public class Slot
         {
             public Location Location { get; }
@@ -97,6 +98,7 @@ namespace MSDAD
             }
         }
 
+        [Serializable]
         public class ClosedSlot : Slot
         {
 
@@ -121,6 +123,7 @@ namespace MSDAD
 
         }
 
+        [Serializable]
         public class Meeting
         {
             public String CoordenatorID { get; }
@@ -221,6 +224,7 @@ namespace MSDAD
 
         }
 
+        [Serializable]
         public class MeetingInvitees : Meeting
         {
             public HashSet<String> Invitees { get; }

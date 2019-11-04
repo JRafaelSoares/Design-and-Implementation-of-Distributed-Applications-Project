@@ -4,7 +4,8 @@ namespace MSDAD
 {
     namespace Shared
     {
-        public class Room
+        [Serializable]
+        public class Room 
         {
             public string Name { get; }
 
@@ -56,6 +57,7 @@ namespace MSDAD
             }
         }
 
+        [Serializable]
         public class Location
         {
             public static readonly Dictionary<String, Location> Locations = new Dictionary<string, Location>();
