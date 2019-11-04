@@ -46,6 +46,8 @@ namespace MSDAD
                 if(args.Length != 6)
                 {
                     Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay ");
+                    System.Console.WriteLine(" Press < enter > to shutdown server...");
+                    System.Console.ReadLine();
                     return;
                 }
 
@@ -61,7 +63,7 @@ namespace MSDAD
                 puppet.AddRoom("Lisbon", 3, "4");
                 puppet.AddRoom("Porto", 2, "1");
                 puppet.AddRoom("Lisbon", 2, "2");
-                System.Console.WriteLine(String.Format("ServerId: {0} port: {1} max faults: {2} min delay: {3} max delay: {4}", args[0], args[1], args[2], args[3], args[4]));
+                System.Console.WriteLine(String.Format("ServerId: {0} network_name: {1} port: {2} max faults: {3} min delay: {4} max delay: {5}", args[0], args[1], args[2], args[3], args[4], args[5]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
             }

@@ -23,6 +23,7 @@ namespace MSDAD
 
             void CloseMeeting(String topic, String userId);
         }
+
         [Serializable]
         public class ServerException : ApplicationException
         {

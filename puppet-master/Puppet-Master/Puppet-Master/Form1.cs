@@ -28,7 +28,7 @@ namespace Puppet_Master
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + ip + ":10000/PCS");
             if (pcs != null)
             {
-                String args = String.Format("{0} {1} {2} {3} {4} {5} {6}", serverId, url[0], url[1], url[2], maxFaults, minDelay, maxDelay);
+                String args = String.Format("{0} {1} {2} {3} {4} {5}", serverId, url[2], url[1], maxFaults, minDelay, maxDelay);
                 pcs.CreateProcess("Server", args);
             }
             else

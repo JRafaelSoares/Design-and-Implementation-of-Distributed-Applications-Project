@@ -13,26 +13,23 @@ namespace MSDAD
         {
             void IMSDADPCS.CreateProcess(String type, String args)
             {
-                Process proc = new Process();
-                proc.StartInfo.Arguments = args;
                 switch (type)
                 {
                     case "Server":
-                        proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "Server.exe";
+                        Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Server.exe", args);
                         break;
 
                     case "Client:":
-                        proc.StartInfo.FileName = AppDomain.CurrentDomain.BaseDirectory + "Client.exe";
+                        Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Client.exe", args);
                         break;
                 }
-                Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Server.exe", args);
-                proc.Dispose();
+               
             }
             static void Main()
             {
                 TcpChannel channel = new TcpChannel(10000);
                 ChannelServices.RegisterChannel(channel, false);
-                RemotingConfiguration.RegisterWellKnownServiceType(typeof(IMSDADPCS), "PCS", WellKnownObjectMode.Singleton);
+                RemotingConfiguration.RegisterWellKnownServiceType(typeof(PCS), "PCS", WellKnownObjectMode.Singleton);
                 Console.WriteLine(" < enter > para sair...");
                 Console.ReadLine();
             }
