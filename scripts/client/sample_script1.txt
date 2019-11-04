@@ -1,0 +1,7 @@
+create myTopic1 3 2 4 Lisboa,2020-01-02 Porto,2020-02-03 client1 client2 client3 client4
+create myTopic2 2 1 0 Lisboa,2020-01-10
+list
+join myTopic2 1 Lisboa,2020-01-10
+wait 10000
+close myTopic1
+close myTopic2
