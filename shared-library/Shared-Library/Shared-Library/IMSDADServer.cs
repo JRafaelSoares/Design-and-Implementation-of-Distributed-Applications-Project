@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MSDAD.Shared;
+using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
@@ -99,7 +100,7 @@ namespace MSDAD
 
         [Serializable]
         public class NoMeetingAvailableException : ServerException
-        { 
+        {
             public NoMeetingAvailableException(String m) : base(m) { }
             public NoMeetingAvailableException(SerializationInfo info, StreamingContext context) : base(info, context) { }
         }
@@ -120,10 +121,10 @@ namespace MSDAD
 
         public interface IMSDADServerToServer
         {
-            HashSet<ServerClient> RegisterNewServer(String url);
-            void registerNewClient(String url, String id);
+            ServerState RegisterNewServer(String url);
+            void RegisterNewClient(String url, String id);
 
-            String ping();
+            String Ping();
 
             void CreateMeeting(String topic, Meeting meeting);
         }
@@ -133,7 +134,7 @@ namespace MSDAD
             void CreateMeeting(String topic, Meeting meeting);
         }
 
-        }
+
 
         public interface IMSDADClientPuppet
         {
@@ -142,14 +143,26 @@ namespace MSDAD
     }
 
     [Serializable]
+    public class ServerState
+    {
+        public HashSet<ServerClient> Clients { get; }
+        public Dictionary<String, Meeting> Meetings { get; }
+        public ServerState(HashSet<ServerClient> clients, Dictionary<String, Meeting> meetings)
+        {
+            this.Clients = clients;
+            this.Meetings = meetings;
+        }
+    }
+
+    [Serializable]
     public class ServerClient
     {
         public String Url { get; }
-        public String clientId { get; }
+        public String ClientId { get; }
         public ServerClient(String url, String clientId)
         {
             this.Url = url;
-            this.clientId = clientId;
+            this.ClientId = clientId;
         }
 
         public override bool Equals(Object obj)
@@ -162,13 +175,13 @@ namespace MSDAD
             else
             {
                 ServerClient s = (ServerClient)obj;
-                return s.clientId == this.clientId;
+                return s.ClientId == this.ClientId;
             }
         }
 
         public override int GetHashCode()
         {
-            return this.clientId.GetHashCode();
+            return this.ClientId.GetHashCode();
         }
     }
-
+}

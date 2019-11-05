@@ -18,12 +18,13 @@ namespace MSDAD
                 this.UserId = userId;
                 this.Timestamp = timestamp;
             }
-
+            
             public override string ToString()
             {
                 return String.Format("({0},{1})",UserId.ToString() , Timestamp.ToString());
             }
         }
+
         [Serializable]
         public class Slot
         {
@@ -242,6 +243,48 @@ namespace MSDAD
                 Users = Users.GetRange(0, (int)numUsers);
 
                 this.Slots = new List<Slot> { new ClosedSlot(chosenSlot, bestRoom, Users) };
+            }
+
+            public Meeting updateMeeting(Meeting other)
+            {
+                
+                if(this.CurState == State.Closed)
+                {
+                    return this;
+                }
+                if (other.CurState == State.Closed)
+                {
+                    return other;
+                }
+                if (this.CurState != State.Open)
+                {
+                    return this;
+                }
+                if (other.CurState != State.Open)
+                {
+                    return other;
+                }
+                //Both are Open After this
+                foreach (Join user in this.Users)
+                {
+                    if (!other.Users.Contains(user))
+                    {
+                        other.Users.Add(user);
+                    }
+                }
+                foreach (Slot slot in this.Slots)
+                {
+                    Slot otherSlot = other.Slots.First(s => s.Equals(slot));
+
+                    foreach(Join user in slot.UserIds)
+                    {
+                        if (! otherSlot.UserIds.Contains(user))
+                        {
+                            otherSlot.UserIds.Add(user);
+                        }
+                    }
+                }
+                return other;
             }
 
         }

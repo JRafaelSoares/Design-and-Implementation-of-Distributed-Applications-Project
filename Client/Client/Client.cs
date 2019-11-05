@@ -47,7 +47,7 @@ namespace MSDAD
                 {
                     Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
                 }
-                catch (NoSuchMeetingException e) {
+                catch (NoSuchMeetingException) {
                     Thread.Sleep(500);
                     JoinMeeting(topic, slots);
                 }

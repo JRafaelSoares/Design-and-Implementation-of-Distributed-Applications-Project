@@ -69,7 +69,7 @@ namespace MSDAD
                     if (otherServer != null)
                     {
                         server.ServerURLs.Add(otherServer);
-                        server.AddUsers(otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]));   
+                        server.AddUsers(otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]).Clients);   
                     }
                     else
                     {
@@ -262,16 +262,16 @@ namespace MSDAD
                 {
                     try
                     {
-                        String id = server.ping();
+                        String id = server.Ping();
                         Console.WriteLine(id);
-                    } catch (RemotingException e)
+                    } catch (RemotingException )
                     {
                         Console.WriteLine("Could not contact Server");
                     }
                 }
             }
 
-            String IMSDADServerToServer.ping() {
+            String IMSDADServerToServer.Ping() {
                 return this.SeverId;
 
             }
@@ -279,11 +279,11 @@ namespace MSDAD
             void IMSDADServer.NewClient(string url, string id)
             {
                 
-                this.registerNewClient(url, id);
+                ((IMSDADServerToServer)this).RegisterNewClient(url, id);
                 
                 foreach(IMSDADServerToServer server in this.ServerURLs)
                 {
-                    server.registerNewClient(url, id);
+                    server.RegisterNewClient(url, id);
                 }
             }
 
@@ -295,7 +295,7 @@ namespace MSDAD
                 }
             }
 
-            public HashSet<ServerClient> RegisterNewServer(string url)
+            ServerState IMSDADServerToServer.RegisterNewServer(string url)
             {
                 lock (ClientURLs)
                 {
@@ -310,10 +310,10 @@ namespace MSDAD
                     }
 
                 }
-                return ClientURLs;
+                return new ServerState(ClientURLs, this.Meetings);
             }
 
-            public void registerNewClient(string url, string id)
+            void IMSDADServerToServer.RegisterNewClient(string url, string id)
             {
                 lock (ClientURLs) {
                     this.ClientURLs.Add(new ServerClient(url, id));
