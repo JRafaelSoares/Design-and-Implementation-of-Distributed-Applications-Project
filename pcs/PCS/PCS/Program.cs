@@ -19,7 +19,7 @@ namespace MSDAD
                         Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Server.exe", args);
                         break;
 
-                    case "Client:":
+                    case "Client":
                         Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Client.exe", args);
                         break;
                 }

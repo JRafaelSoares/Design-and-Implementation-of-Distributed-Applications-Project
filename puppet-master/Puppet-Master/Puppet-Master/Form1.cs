@@ -102,9 +102,24 @@ namespace Puppet_Master
             }
         }
 
+        private void CreateClient(String[] clientUrl, String clientId, String serverUrl, String scriptName)
+        {
+            String clientIp = clientUrl[0];
+            IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + clientIp + ":10000/PCS");
+            if (pcs != null)
+            {
+                String args = String.Format("{0} {1} {2} {3} {4}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName);
+                pcs.CreateProcess("Client", args);
+            }
+            else
+            {
+                this.textBox1.Text += String.Format("Unable to contact PCS at ip {0}", clientIp);
+            }
+
+        }
+
         private String[] ParseUrl(String url)
         {
-            safeSleep();
             String[] Items = url.Split(':');
             String ip = Items[1].Substring(2);
             String port = Items[2].Split('/')[0];
@@ -113,7 +128,6 @@ namespace Puppet_Master
         }
         private void ParseCommand(String command)
         {
-            safeSleep();
             String[] items = command.Split();
             switch (items[0])
             {
@@ -126,6 +140,12 @@ namespace Puppet_Master
                     CreateServer(url, serverId, maxFaults, minDelay, maxDelay);
                     break;
                 case "Client":
+                    String[] clientUrl = ParseUrl(items[2]);
+                    String clientId = items[1];
+                    String serverUrl = items[3];
+                    String scriptName = items[4];
+                    Console.WriteLine(String.Format("ClientUrl: {0}\nClientId: {1}\nServerUrl: {2}\nScriptName: {3}", clientUrl, clientId, serverUrl, scriptName));
+                    CreateClient(clientUrl, clientId, serverUrl, scriptName);
                     break;
 
                 case "AddRoom":
@@ -156,9 +176,11 @@ namespace Puppet_Master
 
         private void Crash(string serverId)
         {
+            safeSleep();
             PuppetServer p = new PuppetServer(serverId, null);
             //RemoteAsyncDelegate delegate = new RemoteAsyncDelegate(Servers[p].Crash);
             Servers[p].Crash();
+            Servers.Remove(p);
         }
 
         private void Wait(int time)
