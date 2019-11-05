@@ -245,7 +245,7 @@ namespace MSDAD
                 this.Slots = new List<Slot> { new ClosedSlot(chosenSlot, bestRoom, Users) };
             }
 
-            public Meeting updateMeeting(Meeting other)
+            public Meeting MergeMeeting(Meeting other)
             {
                 
                 if(this.CurState == State.Closed)

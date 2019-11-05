@@ -61,6 +61,7 @@ namespace MSDAD
                 RemotingServices.Marshal(server, args[2], typeof(Server));
 
                 //Get Server URLS and connect to them
+                List<Dictionary<String, Meeting>> allMeetings = new List<Dictionary<String, Meeting>>();
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
@@ -69,7 +70,9 @@ namespace MSDAD
                     if (otherServer != null)
                     {
                         server.ServerURLs.Add(otherServer);
-                        server.AddUsers(otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]).Clients);   
+                        ServerState state = otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]);
+                        server.AddUsers(state.Clients);
+                        allMeetings.Add(state.Meetings);
                     }
                     else
                     {
@@ -85,11 +88,34 @@ namespace MSDAD
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
 
+                server.CalculateMeetingState(allMeetings);
+
                 System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
             }
 
+            void CalculateMeetingState(List<Dictionary<String, Meeting>> meetings)
+            {
+                lock(Meetings) {
+                    foreach (Dictionary<String, Meeting> meetingDict in meetings)
+                    {
+                        foreach (Meeting meeting in meetingDict.Values)
+                        {
+                            if (!this.Meetings.ContainsKey(meeting.Topic))
+                            {
+                                this.Meetings.Add(meeting.Topic, meeting);
+                            }
+                            else if (this.Meetings[meeting.Topic].CurState == Meeting.State.Open && meeting.CurState != Meeting.State.Open)
+                            {
+                                this.Meetings.Remove(meeting.Topic);
+                                this.Meetings.Add(meeting.Topic, meeting);
+                            }
+                        }
+                    }
+                }
+
+            }
             //Leases never expire
             public override object InitializeLifetimeService()
             {
