@@ -168,14 +168,12 @@ namespace Puppet_Master
             }
         }
 
-        //Testar
         private void Status()
         {
 
-            try { 
-            
+            try
+            { 
                 safeSleep();
-
                 foreach (IMSDADServerPuppet server in Servers.Values)
                 {
                     RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.Status);
@@ -186,7 +184,7 @@ namespace Puppet_Master
             } catch(SocketException)
             {
                 System.Console.WriteLine("Could not locate server");
-            }
+            } 
 
         }
 

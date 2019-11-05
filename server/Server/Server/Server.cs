@@ -262,10 +262,17 @@ namespace MSDAD
             void IMSDADServerPuppet.Unfreeze() { }
             void IMSDADServerPuppet.Status()
             {
+                
                 foreach(IMSDADServerToServer server in ServerURLs)
                 {
-                    String id = server.ping();
-                    Console.WriteLine(id);
+                    try
+                    {
+                        String id = server.ping();
+                        Console.WriteLine(id);
+                    } catch (RemotingException e)
+                    {
+                        Console.WriteLine("Could not contact Server");
+                    }
                 }
             }
 
