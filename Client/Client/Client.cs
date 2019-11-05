@@ -14,7 +14,7 @@ namespace MSDAD
     {
         public delegate String parseDelegate();
 
-        class Client : MarshalByRefObject
+        class Client : MarshalByRefObject , IMSDADClientPuppet
         {
             private readonly IMSDADServer Server;
             private readonly String UserId;
@@ -194,6 +194,11 @@ namespace MSDAD
                     }
                     client.ParseScript(Console.ReadLine);
                 }
+            }
+
+            public void ShutDown()
+            {
+                Environment.Exit(1);
             }
         }
     }

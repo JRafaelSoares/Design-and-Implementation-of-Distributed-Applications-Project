@@ -128,6 +128,11 @@ namespace MSDAD
         {
 
         }
+
+        public interface IMSDADClientPuppet
+        {
+            void ShutDown();
+        }
     }
 
     [Serializable]
