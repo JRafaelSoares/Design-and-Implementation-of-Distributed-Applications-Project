@@ -256,7 +256,7 @@ namespace MSDAD
                 }
             }
             void IMSDADServerPuppet.Crash() {
-                System.Environment.Exit(1);
+                Environment.Exit(1);
             }
             void IMSDADServerPuppet.Freeze() { }
             void IMSDADServerPuppet.Unfreeze() { }
