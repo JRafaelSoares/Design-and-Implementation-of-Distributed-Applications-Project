@@ -5,6 +5,8 @@ using System.Runtime.Remoting.Channels.Tcp;
 using System.Windows.Forms;
 using MSDAD.Shared;
 using System.Threading;
+using System.Net.Sockets;
+
 
 
 namespace Puppet_Master
@@ -156,7 +158,7 @@ namespace Puppet_Master
             }
         }
 
-        //Fazer no fim
+        //Testar com assíncrono
         private void Status()
         {
             safeSleep();
@@ -174,15 +176,26 @@ namespace Puppet_Master
 
         }
 
+        //Testar 
         private void Crash(string serverId)
         {
-            safeSleep();
-            PuppetServer p = new PuppetServer(serverId, null);
-            //RemoteAsyncDelegate delegate = new RemoteAsyncDelegate(Servers[p].Crash);
-            Servers[p].Crash();
-            Servers.Remove(p);
+            try
+            {
+                safeSleep();
+                PuppetServer p = new PuppetServer(serverId, null);
+                RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(Servers[p].Crash);
+                IAsyncResult RemAr = remDelegate.BeginInvoke(null, null);
+                RemAr.AsyncWaitHandle.WaitOne();
+                remDelegate.EndInvoke(RemAr);
+                Servers.Remove(p);
+            } catch (SocketException)
+            {
+                System.Console.WriteLine("Could not locate server");
+            }
+
         }
 
+        //Testar com assíncrono
         private void Wait(int time)
         {
             timeToSleep = time;
