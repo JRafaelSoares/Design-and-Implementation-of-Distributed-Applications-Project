@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
@@ -156,7 +157,17 @@ namespace MSDAD
 
                 TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
                 ChannelServices.RegisterChannel(channel, false);
-                IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
+                IMSDADServer server = null;
+                try
+                {
+                    server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
+                } catch (SocketException e)
+                {
+                    Console.WriteLine("Rip server");
+                    Console.ReadLine();
+                }
+
+                //IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
