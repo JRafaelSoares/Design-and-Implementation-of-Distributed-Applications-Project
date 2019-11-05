@@ -19,6 +19,7 @@ namespace Puppet_Master
         private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
         public delegate string RemoteAsyncDelegate();
         private int timeToSleep = 0;
+
         public Form1()
         {
             InitializeComponent();
@@ -135,6 +136,7 @@ namespace Puppet_Master
             }
         }
 
+        //Fazer no fim
         private void Status()
         {
             safeSleep();
@@ -152,10 +154,10 @@ namespace Puppet_Master
 
         }
 
-        //Passar para assíncrono
         private void Crash(string serverId)
         {
             PuppetServer p = new PuppetServer(serverId, null);
+            //RemoteAsyncDelegate delegate = new RemoteAsyncDelegate(Servers[p].Crash);
             Servers[p].Crash();
         }
 
