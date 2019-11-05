@@ -146,9 +146,13 @@ namespace MSDAD
                 SafeSleep();
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
-                if (!found || meeting.CurState != Meeting.State.Open)
+                if (!found)
                 {
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
+                }
+                if(meeting.CurState != Meeting.State.Open)
+                {
+                    throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
                 lock (meeting)
@@ -247,11 +251,30 @@ namespace MSDAD
                 }
             }
             void IMSDADServerPuppet.Crash() {
-                System.Environment.Exit(1);
+                Environment.Exit(1);
             }
             void IMSDADServerPuppet.Freeze() { }
             void IMSDADServerPuppet.Unfreeze() { }
-            void IMSDADServerPuppet.Status() { }
+            void IMSDADServerPuppet.Status()
+            {
+                
+                foreach(IMSDADServerToServer server in ServerURLs)
+                {
+                    try
+                    {
+                        String id = server.ping();
+                        Console.WriteLine(id);
+                    } catch (RemotingException e)
+                    {
+                        Console.WriteLine("Could not contact Server");
+                    }
+                }
+            }
+
+            String IMSDADServerToServer.ping() {
+                return this.SeverId;
+
+            }
 
             void IMSDADServer.NewClient(string url, string id)
             {
@@ -295,6 +318,11 @@ namespace MSDAD
                 lock (ClientURLs) {
                     this.ClientURLs.Add(new ServerClient(url, id));
                 }
+            }
+
+            void IMSDADServerPuppet.ShutDown()
+            {
+                Environment.Exit(1);
             }
 
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)

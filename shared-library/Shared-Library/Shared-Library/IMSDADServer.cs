@@ -24,6 +24,7 @@ namespace MSDAD
             String ListMeetings(String userId);
 
             void CloseMeeting(String topic, String userId);
+
         }
 
         [Serializable]
@@ -113,12 +114,16 @@ namespace MSDAD
             void Freeze();
 
             void Unfreeze();
+
+            void ShutDown();
         }
 
         public interface IMSDADServerToServer
         {
             HashSet<ServerClient> RegisterNewServer(String url);
             void registerNewClient(String url, String id);
+
+            String ping();
 
             void CreateMeeting(String topic, Meeting meeting);
         }
@@ -128,6 +133,12 @@ namespace MSDAD
             void CreateMeeting(String topic, Meeting meeting);
         }
 
+        }
+
+        public interface IMSDADClientPuppet
+        {
+            void ShutDown();
+        }
     }
 
     [Serializable]
@@ -140,7 +151,6 @@ namespace MSDAD
             this.Url = url;
             this.clientId = clientId;
         }
-
 
         public override bool Equals(Object obj)
         {

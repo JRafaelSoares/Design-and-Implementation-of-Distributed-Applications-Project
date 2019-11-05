@@ -14,7 +14,7 @@ namespace MSDAD
     {
         public delegate String parseDelegate();
 
-        class Client : MarshalByRefObject, IMSDADClientToClient
+        class Client : MarshalByRefObject, IMSDADClientToClient, IMSDADClientPuppet
         {
             private readonly IMSDADServer Server;
             private readonly String UserId;
@@ -46,9 +46,15 @@ namespace MSDAD
                 try
                 {
                     Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
-                } catch (MSDAD.Shared.ServerException e)
+                }
+                catch (NoSuchMeetingException e) {
+                    Thread.Sleep(500);
+                    JoinMeeting(topic, slots);
+                }
+                catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
+
                 }
             }
 
@@ -220,6 +226,11 @@ namespace MSDAD
                     }
                     client.ParseScript(Console.ReadLine);
                 }
+            }
+
+            public void ShutDown()
+            {
+                Environment.Exit(1);
             }
         }
     }

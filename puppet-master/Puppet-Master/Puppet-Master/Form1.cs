@@ -14,8 +14,8 @@ namespace Puppet_Master
     public partial class Form1 : Form
     {
         private List<PuppetRoom> Locations;
-        public Dictionary<String, String> Clients;
-        public Dictionary<PuppetServer, IMSDADServerPuppet> Servers;
+        public Dictionary<Puppet, IMSDADClientPuppet> Clients;
+        public Dictionary<Puppet, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
         private OpenFileDialog FolderBrowser = new OpenFileDialog();
         public delegate void RemoteAsyncDelegate();
@@ -26,8 +26,8 @@ namespace Puppet_Master
             InitializeComponent();  
             this.channel = new TcpChannel(10001);
             ChannelServices.RegisterChannel(channel, false);
-            this.Clients = new Dictionary<string, string>();
-            this.Servers = new Dictionary<PuppetServer, IMSDADServerPuppet>();
+            this.Clients = new Dictionary<Puppet, IMSDADClientPuppet>();
+            this.Servers = new Dictionary<Puppet, IMSDADServerPuppet>();
             this.Locations = new List<PuppetRoom>();
         }
 
@@ -61,7 +61,7 @@ namespace Puppet_Master
                 
                 //Give Server URL of all Servers currently running
                 String servers = "";
-                foreach (PuppetServer server in this.Servers.Keys) {
+                foreach (Puppet server in this.Servers.Keys) {
                     servers += server.serverUrl + " ";
                 }
 
@@ -82,7 +82,7 @@ namespace Puppet_Master
                 IMSDADServerPuppet remoteRef = (IMSDADServerPuppet)Activator.GetObject(typeof(IMSDADServerPuppet), fullUrl);
                 if (remoteRef != null)
                 {
-                    this.Servers.Add(new PuppetServer(serverId , fullUrl), remoteRef);
+                    this.Servers.Add(new Puppet(serverId , fullUrl), remoteRef);
                 }
                 else
                 {
@@ -102,9 +102,18 @@ namespace Puppet_Master
             if (pcs != null)
             {
                 String fullUrl = "tcp://" + clientIp + ":" + clientUrl[1] + "/" + clientUrl[2];
-                this.Clients.Add(clientId, fullUrl);
+                
                 String args = String.Format("{0} {1} {2} {3} {4} {5}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName, clientIp);
                 pcs.CreateProcess("Client", args);
+                IMSDADClientPuppet remoteRef = (IMSDADClientPuppet)Activator.GetObject(typeof(IMSDADClientPuppet), fullUrl);
+                if (remoteRef != null)
+                {
+                    this.Clients.Add(new Puppet(clientId, fullUrl), remoteRef);
+                }
+                else
+                {
+                    this.textBox1.Text += String.Format("Client at URL {0} was not created", fullUrl);
+                }
             }
             else
             {
@@ -159,26 +168,23 @@ namespace Puppet_Master
             }
         }
 
-        //Testar
         private void Status()
         {
 
-            try { 
-            
+            try
+            { 
                 safeSleep();
-
                 foreach (IMSDADServerPuppet server in Servers.Values)
                 {
                     RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.Status);
-                    IAsyncResult result = remDelegate.BeginInvoke(null, null);
-                    result.AsyncWaitHandle.WaitOne();
-                    remDelegate.EndInvoke(result);
+                    remDelegate.BeginInvoke(null, null);
+                  
                 }
 
             } catch(SocketException)
             {
                 System.Console.WriteLine("Could not locate server");
-            }
+            } 
 
         }
 
@@ -188,11 +194,9 @@ namespace Puppet_Master
             try
             {
                 safeSleep();
-                PuppetServer p = new PuppetServer(serverId, null);
+                Puppet p = new Puppet(serverId, null);
                 RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(Servers[p].Crash);
-                IAsyncResult RemAr = remDelegate.BeginInvoke(null, null);
-                RemAr.AsyncWaitHandle.WaitOne();
-                remDelegate.EndInvoke(RemAr);
+                remDelegate.BeginInvoke(null, null);
                 Servers.Remove(p);
             } catch (SocketException)
             {
@@ -206,7 +210,6 @@ namespace Puppet_Master
             timeToSleep = time;
         }
 
-        //Passar para assíncrono
         private void safeSleep()
         {
             if(timeToSleep != 0)
@@ -250,13 +253,31 @@ namespace Puppet_Master
 
         }
 
-        private void button1_Click_2(object sender, EventArgs e)
-        {
-
-        }
 
         private void button1_Click_3(object sender, EventArgs e)
         {
+
+            try
+            {
+                foreach (IMSDADServerPuppet server in Servers.Values)
+                {
+                    RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.ShutDown);
+                    remDelegate.BeginInvoke(null, null);
+                }
+
+                foreach(IMSDADClientPuppet client in Clients.Values)
+                {
+                    RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(client.ShutDown);
+                    remDelegate.BeginInvoke(null, null);
+                }
+
+            } catch (SocketException)
+            {
+                System.Console.WriteLine("Could not locate server");
+            }
+
+            Servers.Clear();
+            Clients.Clear();
 
         }
     }
@@ -279,12 +300,12 @@ namespace Puppet_Master
         }
     }
 
-    public class PuppetServer
+    public class Puppet
     {
         public String serverId { get; }
         public String serverUrl { get; }
 
-        public PuppetServer(String serverId, String serverUrl)
+        public Puppet(String serverId, String serverUrl)
         {
             this.serverId = serverId;
             this.serverUrl = serverUrl;
@@ -298,10 +319,11 @@ namespace Puppet_Master
             }
             else
             {
-                PuppetServer s = (PuppetServer)obj;
+                Puppet s = (Puppet)obj;
                 return s.serverId == this.serverId;
             }
         }
+
         public override int GetHashCode()
         {
             return this.serverId.GetHashCode();
