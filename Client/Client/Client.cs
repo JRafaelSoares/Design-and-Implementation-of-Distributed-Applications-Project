@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
@@ -34,10 +35,12 @@ namespace MSDAD
             {
                 SafeSleep();
 
-                String meetings = Server.ListMeetings(this.UserId);
-                
-                Console.WriteLine(meetings);   
-                
+                foreach (KeyValuePair<string, Meeting> meeting in Meetings)
+                {
+                    Console.WriteLine(meeting.Value.ToString());
+                }
+
+                //String meetings = Server.ListMeetings(this.UserId);
             }
 
             private void JoinMeeting(String topic, List<String> slots)
