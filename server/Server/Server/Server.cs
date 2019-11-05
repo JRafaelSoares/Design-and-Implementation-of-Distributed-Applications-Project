@@ -31,6 +31,8 @@ namespace MSDAD
 
             //private static int ticket = 0;
             //private static int currentTicket = 0;
+            public List<String> ServerURLs { get; } = new List<String>();
+            public List<String> ClientURLs { get; } = new List<String>();
 
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay)
             {
@@ -43,9 +45,9 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length != 6)
+                if(args.Length < 9)
                 {
-                    Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay ");
+                    Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay num_servers server_urls num_clients client_urls numLocations locations");
                     System.Console.WriteLine(" Press < enter > to shutdown server...");
                     System.Console.ReadLine();
                     return;
@@ -56,13 +58,21 @@ namespace MSDAD
                 ChannelServices.RegisterChannel(channel, false);
                 Server server = new Server(args[0], UInt32.Parse(args[3]), Int32.Parse(args[4]), Int32.Parse(args[5]));
                 RemotingServices.Marshal(server, args[1], typeof(Server));
-                //Testing purposes only
-                IMSDADServerPuppet puppet = (IMSDADServerPuppet) server;
-                puppet.AddRoom("Lisbon", 5, "1");
-                puppet.AddRoom("Lisbon", 1, "3");
-                puppet.AddRoom("Lisbon", 3, "4");
-                puppet.AddRoom("Porto", 2, "1");
-                puppet.AddRoom("Lisbon", 2, "2");
+
+                //Get Server URLS
+                int i;
+                for (i = 7; i < 7 + Int32.Parse(args[6]); ++i)
+                {
+                    server.ServerURLs.Add(args[i]);
+                }
+
+                // Get Client URLS
+                int j = i + 1;
+                for (i = j ; i < j + Int32.Parse(args[j-1]) ; ++i)
+                {
+                    server.ClientURLs.Add(args[i]);
+                }
+
                 System.Console.WriteLine(String.Format("ServerId: {0} network_name: {1} port: {2} max faults: {3} min delay: {4} max delay: {5}", args[0], args[1], args[2], args[3], args[4], args[5]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();

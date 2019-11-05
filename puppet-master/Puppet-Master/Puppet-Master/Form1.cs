@@ -12,7 +12,7 @@ namespace Puppet_Master
     {
         private List<PuppetRoom> Locations;
         public Dictionary<String, String> Clients;
-        public Dictionary<String, String> Servers;
+        public Dictionary<String, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
         private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
         public Form1()
@@ -21,13 +21,29 @@ namespace Puppet_Master
             this.channel = new TcpChannel(10001);
             ChannelServices.RegisterChannel(channel, false);
             this.Clients = new Dictionary<string, string>();
-            this.Servers = new Dictionary<string, string>();
+            this.Servers = new Dictionary<string, IMSDADServerPuppet>();
             this.Locations = new List<PuppetRoom>();
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void AddRoom()
+        {
+
+        }
+
+        private void AddRoom(String location, uint capacity, String name)
+        {
+            this.Locations.Add(new PuppetRoom(location, capacity, name));
+
+            foreach(IMSDADServerPuppet serverURL in this.Servers.Values)
+            {
+
+                //IMSDADServerPu server = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + ip + ":10000/PCS");
+            }
         }
 
         private void CreateServer(String[] url, String serverId, String maxFaults, String minDelay, String maxDelay)
@@ -37,7 +53,28 @@ namespace Puppet_Master
             if (pcs != null)
             {
                 String args = String.Format("{0} {1} {2} {3} {4} {5}", serverId, url[2], url[1], maxFaults, minDelay, maxDelay);
+                
+                //Give Server URL of all Servers currently running
+                String servers = "";
+                foreach (String server in this.Servers.Keys) {
+                    servers += server + " ";
+                }
+
+                args += String.Format(" {0} {1}", this.Servers.Values.Count, servers);
+
+                //Give Server URL of all Clients currently joined
+                String clients = "";
+                
+                foreach (String client in this.Clients.Values)
+                {
+                    clients += client + " ";
+                }
+
+                args += String.Format("{0} {1}", this.Clients.Values.Count, clients);
+
+
                 pcs.CreateProcess("Server", args);
+                //this.Servers.Add(serverId, "tcp://" + ip + ":" + url[1] + "/" + url[2]);
             }
             else
             {
@@ -107,5 +144,17 @@ namespace Puppet_Master
         public String location { get; }
         public uint capacity { get; }
         public String name { get; }
+
+        public PuppetRoom(String location, uint capacity, String name)
+        {
+            this.location = location;
+            this.capacity = capacity;
+            this.name = name;
+        }
+
+        public override string ToString()
+        {
+            return String.Format("{0} {1} {2}", this.location, this.capacity, this.name);
+        }
     }
 }
