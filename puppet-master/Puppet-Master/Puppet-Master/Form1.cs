@@ -23,7 +23,7 @@ namespace Puppet_Master
 
         public Form1()
         {
-            InitializeComponent();
+            InitializeComponent();  
             this.channel = new TcpChannel(10001);
             ChannelServices.RegisterChannel(channel, false);
             this.Clients = new Dictionary<string, string>();
@@ -103,7 +103,7 @@ namespace Puppet_Master
             {
                 String fullUrl = "tcp://" + clientIp + ":" + clientUrl[1] + "/" + clientUrl[2];
                 this.Clients.Add(clientId, fullUrl);
-                String args = String.Format("{0} {1} {2} {3} {4}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName);
+                String args = String.Format("{0} {1} {2} {3} {4} {5}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName, clientIp);
                 pcs.CreateProcess("Client", args);
             }
             else
