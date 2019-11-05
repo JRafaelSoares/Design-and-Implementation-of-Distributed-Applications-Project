@@ -212,7 +212,6 @@ namespace Puppet_Master
             timeToSleep = time;
         }
 
-        //Passar para assíncrono
         private void safeSleep()
         {
             if(timeToSleep != 0)
