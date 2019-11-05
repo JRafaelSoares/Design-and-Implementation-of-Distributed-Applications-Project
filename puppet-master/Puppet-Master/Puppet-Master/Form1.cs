@@ -12,7 +12,7 @@ namespace Puppet_Master
     {
         private List<PuppetRoom> Locations;
         public Dictionary<String, String> Clients;
-        public Dictionary<String, IMSDADServerPuppet> Servers;
+        public Dictionary<PuppetServer, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
         private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
         public Form1()
@@ -21,7 +21,7 @@ namespace Puppet_Master
             this.channel = new TcpChannel(10001);
             ChannelServices.RegisterChannel(channel, false);
             this.Clients = new Dictionary<string, string>();
-            this.Servers = new Dictionary<string, IMSDADServerPuppet>();
+            this.Servers = new Dictionary<PuppetServer, IMSDADServerPuppet>();
             this.Locations = new List<PuppetRoom>();
         }
 
@@ -30,10 +30,6 @@ namespace Puppet_Master
 
         }
 
-        private void AddRoom()
-        {
-
-        }
 
         private void AddRoom(String location, uint capacity, String name)
         {
@@ -41,23 +37,24 @@ namespace Puppet_Master
 
             foreach(IMSDADServerPuppet serverURL in this.Servers.Values)
             {
-
-                //IMSDADServerPu server = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + ip + ":10000/PCS");
+                serverURL.AddRoom(location, capacity, name);   
             }
         }
 
         private void CreateServer(String[] url, String serverId, String maxFaults, String minDelay, String maxDelay)
         {
+            //Contact PCS
             String ip = url[0];
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + ip + ":10000/PCS");
+
             if (pcs != null)
             {
                 String args = String.Format("{0} {1} {2} {3} {4} {5}", serverId, url[2], url[1], maxFaults, minDelay, maxDelay);
                 
                 //Give Server URL of all Servers currently running
                 String servers = "";
-                foreach (String server in this.Servers.Keys) {
-                    servers += server + " ";
+                foreach (PuppetServer server in this.Servers.Keys) {
+                    servers += server.serverUrl + " ";
                 }
 
                 args += String.Format(" {0} {1}", this.Servers.Values.Count, servers);
@@ -72,9 +69,18 @@ namespace Puppet_Master
 
                 args += String.Format("{0} {1}", this.Clients.Values.Count, clients);
 
-
+                //Contact Server and get Ref
                 pcs.CreateProcess("Server", args);
-                //this.Servers.Add(serverId, "tcp://" + ip + ":" + url[1] + "/" + url[2]);
+                String fullUrl = "tcp://" + ip + ":" + url[1] + "/" + url[2];
+                IMSDADServerPuppet remoteRef = (IMSDADServerPuppet)Activator.GetObject(typeof(IMSDADServerPuppet), fullUrl);
+                if (remoteRef != null)
+                {
+                    this.Servers.Add(new PuppetServer(serverId , fullUrl), remoteRef);
+                }
+                else
+                {
+                    this.textBox1.Text += String.Format("Server at URL {0} was not created", fullUrl);
+                }
             }
             else
             {
@@ -157,4 +163,36 @@ namespace Puppet_Master
             return String.Format("{0} {1} {2}", this.location, this.capacity, this.name);
         }
     }
-}
+
+    public class PuppetServer
+    {
+        public String serverId { get; }
+        public String serverUrl { get; }
+
+        public PuppetServer(String serverId, String serverUrl)
+        {
+            this.serverId = serverId;
+            this.serverUrl = serverUrl;
+        }
+        public override bool Equals(Object obj)
+        {
+            //Check for null and compare run-time types.
+            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            {
+                return false;
+            }
+            else
+            {
+                PuppetServer s = (PuppetServer)obj;
+                return s.serverId == this.serverId;
+            }
+        }
+        public override int GetHashCode()
+        {
+            return this.serverId.GetHashCode();
+        }
+
+    }
+    }
+
+
