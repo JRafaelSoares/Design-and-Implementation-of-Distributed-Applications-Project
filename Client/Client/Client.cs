@@ -43,9 +43,15 @@ namespace MSDAD
                 try
                 {
                     Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
-                } catch (MSDAD.Shared.ServerException e)
+                }
+                catch (NoSuchMeetingException e) {
+                    Thread.Sleep(500);
+                    JoinMeeting(topic, slots);
+                }
+                catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
+
                 }
             }
 

@@ -151,9 +151,13 @@ namespace MSDAD
                 SafeSleep();
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
-                if (!found || meeting.CurState != Meeting.State.Open)
+                if (!found)
                 {
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
+                }
+                if(meeting.CurState != Meeting.State.Open)
+                {
+                    throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
                 lock (meeting)
