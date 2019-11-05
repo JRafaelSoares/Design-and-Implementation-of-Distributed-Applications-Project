@@ -11,39 +11,6 @@ namespace MSDAD
 {
     namespace Server
     {
-
-        class ServerClient
-        {
-            public String Url { get; }
-            public String clientId { get; }
-            public ServerClient(String url, String clientId)
-            {
-                this.Url = url;
-                this.clientId = clientId;
-            }
-
-          
-            public override bool Equals(Object obj)
-            {
-                //Check for null and compare run-time types.
-                if ((obj == null) || !this.GetType().Equals(obj.GetType()))
-                {
-                    return false;
-                }
-                else
-                {
-                    ServerClient s = (ServerClient)obj;
-                    return s.clientId == this.clientId;
-                }
-            }
-
-            public override int GetHashCode()
-            {
-                return this.clientId.GetHashCode();
-            }
-
-
-        }
         class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet, IMSDADServerToServer
         {
             private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
@@ -301,9 +268,23 @@ namespace MSDAD
                 }
             }
 
-            public List<string> registerNewServer(string url, string id)
+            public HashSet<ServerClient> RegisterNewServer(string url)
             {
-                throw new NotImplementedException();
+                lock (ClientURLs)
+                {
+                    IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
+                    if (otherServer != null)
+                    {
+                        ServerURLs.Add(otherServer);
+                    }
+                    else
+                    {
+                        System.Console.WriteLine("Cannot connect to server at address {0}", url);
+                    }
+                }
+
+                return ClientURLs;
+               
             }
 
             public void registerNewClient(string url, string id)
