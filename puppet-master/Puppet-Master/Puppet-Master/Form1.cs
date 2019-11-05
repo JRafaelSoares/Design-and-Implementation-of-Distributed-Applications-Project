@@ -69,6 +69,13 @@ namespace Puppet_Master
 
                 args += String.Format("{0} {1}", this.Clients.Values.Count, clients);
 
+                String locals = "";
+                foreach (PuppetRoom room in this.Locations)
+                {
+                    locals += room.ToString()  + " ";
+                }
+                args += String.Format("{0} {1}", this.Locations.Count, locals);
+
                 //Contact Server and get Ref
                 pcs.CreateProcess("Server", args);
                 String fullUrl = "tcp://" + ip + ":" + url[1] + "/" + url[2];
@@ -110,6 +117,12 @@ namespace Puppet_Master
                     CreateServer(url, serverId, maxFaults, minDelay, maxDelay);
                     break;
                 case "Client":
+                    break;
+
+                case "AddRoom":
+                    AddRoom(items[1], UInt32.Parse(items[2]), items[3]);
+                    break;
+                default:
                     break;
             }
         }
