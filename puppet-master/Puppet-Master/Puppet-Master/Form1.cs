@@ -167,20 +167,25 @@ namespace Puppet_Master
             }
         }
 
-        //Testar com assíncrono
+        //Testar
         private void Status()
         {
-            safeSleep();
-            foreach ( IMSDADServerPuppet server in Servers.Values) {
 
-                // RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(server.Status);
-                // Call delegate to remote method
-                //IAsyncResult result = RemoteDel.BeginInvoke(null, null);
-                // Wait for the end of the call and then explictly call EndInvoke
-                //result.AsyncWaitHandle.WaitOne();
-                //RemoteDel.EndInvoke(result);
+            try { 
+            
+                safeSleep();
 
-                server.Status();
+                foreach (IMSDADServerPuppet server in Servers.Values)
+                {
+                    RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.Status);
+                    IAsyncResult result = remDelegate.BeginInvoke(null, null);
+                    result.AsyncWaitHandle.WaitOne();
+                    remDelegate.EndInvoke(result);
+                }
+
+            } catch(SocketException)
+            {
+                System.Console.WriteLine("Could not locate server");
             }
 
         }
@@ -204,7 +209,6 @@ namespace Puppet_Master
 
         }
 
-        //Testar com assíncrono
         private void Wait(int time)
         {
             timeToSleep = time;
