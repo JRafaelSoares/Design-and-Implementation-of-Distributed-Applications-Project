@@ -6,6 +6,7 @@ using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Linq;
 using System.Threading;
+using System.Net;
 
 namespace MSDAD
 {
@@ -45,36 +46,35 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length < 8)
+                if(args.Length < 9)
                 {
-                    Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay num_servers server_urls numLocations locations");
+                    Console.WriteLine("<Usage> Server server_ip server_id network_name port max_faults min_delay max_delay num_servers server_urls numLocations locations");
                     System.Console.WriteLine(" Press < enter > to shutdown server...");
                     System.Console.ReadLine();
                     return;
                 }
 
                 //Initialize Server
-                TcpChannel channel = new TcpChannel(Int32.Parse(args[2]));
+                TcpChannel channel = new TcpChannel(Int32.Parse(args[3]));
                 ChannelServices.RegisterChannel(channel, false);
-                Server server = new Server(args[0], UInt32.Parse(args[3]), Int32.Parse(args[4]), Int32.Parse(args[5]));
-                RemotingServices.Marshal(server, args[1], typeof(Server));
+                Server server = new Server(args[1], UInt32.Parse(args[4]), Int32.Parse(args[5]), Int32.Parse(args[6]));
+                RemotingServices.Marshal(server, args[2], typeof(Server));
 
                 //Get Server URLS and connect to them
                 int i;
-                for (i = 7; i < 7 + Int32.Parse(args[6]); ++i)
+                for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
                     if (otherServer != null)
                     {
                         server.ServerURLs.Add(otherServer);
+                        otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]);   
                     }
                     else
                     {
                         System.Console.WriteLine("Cannot connect to server at address {0}", args[i]);
                     }
                 }
-
-                // Get Client URLS
                 
 
                 //Create Locations
@@ -84,7 +84,7 @@ namespace MSDAD
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
 
-                System.Console.WriteLine(String.Format("ServerId: {0} network_name: {1} port: {2} max faults: {3} min delay: {4} max delay: {5}", args[0], args[1], args[2], args[3], args[4], args[5]));
+                System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
             }
