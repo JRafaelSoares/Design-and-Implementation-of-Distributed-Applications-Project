@@ -117,7 +117,7 @@ namespace MSDAD
 
         public interface IMSDADServerToServer
         {
-            List<String> registerNewServer(String url, String id);
+            HashSet<ServerClient> RegisterNewServer(String url);
             void registerNewClient(String url, String id);
         }
 
@@ -125,6 +125,40 @@ namespace MSDAD
         {
 
         }
+    }
+
+    [Serializable]
+    public class ServerClient
+    {
+        public String Url { get; }
+        public String clientId { get; }
+        public ServerClient(String url, String clientId)
+        {
+            this.Url = url;
+            this.clientId = clientId;
+        }
+
+
+        public override bool Equals(Object obj)
+        {
+            //Check for null and compare run-time types.
+            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+            {
+                return false;
+            }
+            else
+            {
+                ServerClient s = (ServerClient)obj;
+                return s.clientId == this.clientId;
+            }
+        }
+
+        public override int GetHashCode()
+        {
+            return this.clientId.GetHashCode();
+        }
+
+
     }
 }
 

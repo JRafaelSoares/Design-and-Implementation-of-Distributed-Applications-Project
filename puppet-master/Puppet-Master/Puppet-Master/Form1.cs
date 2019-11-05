@@ -57,7 +57,7 @@ namespace Puppet_Master
 
             if (pcs != null)
             {
-                String args = String.Format("{0} {1} {2} {3} {4} {5}", serverId, url[2], url[1], maxFaults, minDelay, maxDelay);
+                String args = String.Format("{0} {1} {2} {3} {4} {5} {6}", url[0], serverId, url[2], url[1], maxFaults, minDelay, maxDelay);
                 
                 //Give Server URL of all Servers currently running
                 String servers = "";

@@ -149,9 +149,9 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length != 5)
+                if(args.Length != 6)
                 {
-                    System.Console.WriteLine("<usage> Client username client_port network_name server_url script_file");
+                    System.Console.WriteLine("<usage> Client username client_port network_name server_url script_file client_ip");
                     Environment.Exit(1);
                 }
 
@@ -167,13 +167,13 @@ namespace MSDAD
                 }
                 else
                 {
- 
+
 
                     Client client = new Client(server, args[0]);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
                     //Register Client with server
-                    server.NewClient(args[2], args[0]);
+                    server.NewClient("tcp://" + args[5] + args[1] + "/" + args[2], args[0]);
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
