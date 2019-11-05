@@ -7,12 +7,7 @@ using MSDAD.Shared;
 
 namespace Puppet_Master
 {
-    public class PuppetRoom
-    {
-        public String location { get; }
-        public uint capacity { get; }
-        public String name { get; }
-    }
+
     public partial class Form1 : Form
     {
         private List<PuppetRoom> Locations;
@@ -106,5 +101,11 @@ namespace Puppet_Master
         {
 
         }
+    }
+    public class PuppetRoom
+    {
+        public String location { get; }
+        public uint capacity { get; }
+        public String name { get; }
     }
 }
