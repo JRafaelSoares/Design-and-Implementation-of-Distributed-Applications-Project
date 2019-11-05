@@ -5,7 +5,7 @@ using System.Runtime.Remoting.Channels.Tcp;
 using System.Windows.Forms;
 using MSDAD.Shared;
 using System.Threading;
-
+using System.IO;
 
 namespace Puppet_Master
 {
@@ -16,7 +16,7 @@ namespace Puppet_Master
         public Dictionary<String, String> Clients;
         public Dictionary<PuppetServer, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
-        private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
+        private OpenFileDialog FolderBrowser = new OpenFileDialog();
         public delegate string RemoteAsyncDelegate();
         private int timeToSleep = 0;
         public Form1()
@@ -219,10 +219,23 @@ namespace Puppet_Master
 
         private void button1_Click_1(object sender, EventArgs e)
         {
+            string folderPath;
+
             if (FolderBrowser.ShowDialog() == DialogResult.OK)
             {
-
+                folderPath = FolderBrowser.FileName;
+            } else
+            {
+                this.textBox1.Text += "Cannot open file given";
+                return;
             }
+            StreamReader reader = File.OpenText(folderPath);
+            String line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                ParseCommand(line);
+            }
+
         }
 
         private void button1_Click_2(object sender, EventArgs e)
