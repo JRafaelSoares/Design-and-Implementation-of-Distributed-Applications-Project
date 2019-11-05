@@ -123,7 +123,7 @@ namespace MSDAD
                 return null;
             }
 
-            void ServerCreateMeeting (string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
+            /*void ServerCreateMeeting (string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
             {
                 /*int myTicket = Interlocked.Increment(ref ticket) -1 ;
                 while (myTicket != currentTicket)
@@ -131,7 +131,7 @@ namespace MSDAD
                     System.Threading.Thread.Sleep(250);
                 }
                 this.ServerCreateMeeting(coordId, topic, minParticipants, slots, invitees);
-                Interlocked.Increment(ref currentTicket);*/
+                Interlocked.Increment(ref currentTicket);* / 
 
                 workQueue.AddWork(delegate ()
                 {
@@ -139,8 +139,7 @@ namespace MSDAD
 
                 });
 
-
-            }
+            }*/
 
             private void SafeSleep()
             {
@@ -226,50 +225,53 @@ namespace MSDAD
                 if ((!found) || meeting.CurState != Meeting.State.Open) { 
                     throw new TopicDoesNotExistException("Topic " + topic + " cannot be closed\n");
                 }
-                
-                lock (Location.Locations)
+                //Lock other threads from closing any other Meetings
+                lock (this.Meetings)
                 {
-                    
-                    if (meeting.CoordenatorID != userId)
+                    //Lock other threads from joining this meeting
+                    lock (meeting)
                     {
-                        throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.\n");
+                        if (meeting.CoordenatorID != userId)
+                        {
+                            throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.\n");
+                        }
+
+
+                        List<Slot> slots = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants).ToList();
+
+
+                        if (slots.Count == 0)
+                        {
+                            meeting.CurState = Meeting.State.Canceled;
+                            throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled\n");
+                        }
+
+                        slots.Sort((x, y) =>
+                        {
+                            return (int)(y.GetNumUsers() - x.GetNumUsers());
+                        });
+
+                        uint numUsers = slots[0].GetNumUsers();
+                        DateTime date = slots[0].Date;
+
+                        //Only those with maximum potential users
+                        slots = slots.Where(x => x.GetNumUsers() == numUsers).ToList();
+
+                        //Tightest room
+                        slots.Sort((x, y) =>
+                        {
+                            return (int)(x.Location.GetBestFittingRoomForCapacity(date, numUsers).Capacity - y.Location.GetBestFittingRoomForCapacity(date, numUsers).Capacity);
+                        });
+
+                        meeting.Close(slots[0], numUsers);
+
                     }
-
-
-                    List<Slot> slots = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants).ToList();
-
-                                             
-                    if (slots.Count == 0)
-                    {
-                        meeting.CurState = Meeting.State.Canceled;
-                        throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled\n");
-                    }
-
-                    slots.Sort((x, y) =>
-                    {
-                        return (int) (y.GetNumUsers() - x.GetNumUsers());
-                    });
-                    
-                    uint numUsers = slots[0].GetNumUsers();
-                    DateTime date = slots[0].Date;
-
-                    //Only those with maximum potential users
-                    slots = slots.Where(x => x.GetNumUsers() == numUsers).ToList();
-
-                    //Tightest room
-                    slots.Sort((x, y) =>
-                    {
-                        return (int) (x.Location.GetBestFittingRoomForCapacity(date, numUsers).Capacity - y.Location.GetBestFittingRoomForCapacity(date, numUsers).Capacity);
-                    });
-
-                    meeting.Close(slots[0], numUsers);
-
                 }
             }
 
             void IMSDADServerPuppet.AddRoom(String location, uint capacity, String roomName)
             {
-                lock (this)
+                lock (Location.Locations)
                 {
                     Location local = Location.FromName(location);
                     if (local == null)
@@ -283,8 +285,12 @@ namespace MSDAD
             void IMSDADServerPuppet.Crash() {
                 Environment.Exit(1);
             }
-            void IMSDADServerPuppet.Freeze() { }
-            void IMSDADServerPuppet.Unfreeze() { }
+            void IMSDADServerPuppet.Freeze() {
+                throw new NotImplementedException();
+            }
+            void IMSDADServerPuppet.Unfreeze() {
+                throw new NotImplementedException();
+            }
             void IMSDADServerPuppet.Status()
             {
                 
@@ -293,7 +299,7 @@ namespace MSDAD
                     try
                     {
                         String id = server.Ping();
-                        Console.WriteLine(id);
+                        Console.WriteLine(String.Format("Server {0} is alive", id));
                     } catch (RemotingException )
                     {
                         Console.WriteLine("Could not contact Server");
@@ -319,15 +325,20 @@ namespace MSDAD
 
             void AddUsers(HashSet<ServerClient> clients)
             {
-                foreach (ServerClient client in clients)
+                lock (this.ClientURLs)
                 {
-                    this.ClientURLs.Add(client);
+                    foreach (ServerClient client in clients)
+                    {
+                        this.ClientURLs.Add(client);
+                    }
                 }
             }
 
             ServerState IMSDADServerToServer.RegisterNewServer(string url)
             {
-                lock (ClientURLs)
+                //Impossible for a server to Register while a Meeting is being closed 
+                //To ensure that a new server always gets the meeting closed if it is being closed when it joins
+                lock (this.Meetings)
                 {
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
                     if (otherServer != null)
