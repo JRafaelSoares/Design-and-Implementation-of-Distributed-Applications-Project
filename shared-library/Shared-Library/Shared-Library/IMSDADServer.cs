@@ -24,6 +24,7 @@ namespace MSDAD
             String ListMeetings(String userId);
 
             void CloseMeeting(String topic, String userId);
+
         }
 
         [Serializable]
@@ -113,6 +114,8 @@ namespace MSDAD
             void Freeze();
 
             void Unfreeze();
+
+            void ShutDown();
         }
 
         public interface IMSDADServerToServer
@@ -137,7 +140,6 @@ namespace MSDAD
             this.Url = url;
             this.clientId = clientId;
         }
-
 
         public override bool Equals(Object obj)
         {

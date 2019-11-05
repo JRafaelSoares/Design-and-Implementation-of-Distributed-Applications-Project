@@ -293,6 +293,11 @@ namespace MSDAD
                     this.ClientURLs.Add(new ServerClient(url, id));
                 }
             }
+
+            void IMSDADServerPuppet.ShutDown()
+            {
+                Environment.Exit(1);
+            }
         }
     }
 }

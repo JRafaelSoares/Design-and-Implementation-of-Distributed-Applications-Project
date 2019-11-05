@@ -249,13 +249,23 @@ namespace Puppet_Master
 
         }
 
-        private void button1_Click_2(object sender, EventArgs e)
-        {
-
-        }
 
         private void button1_Click_3(object sender, EventArgs e)
         {
+
+            try
+            {
+                foreach (IMSDADServerPuppet server in Servers.Values)
+                {
+                    RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.ShutDown);
+                    IAsyncResult result = remDelegate.BeginInvoke(null, null);
+                    result.AsyncWaitHandle.WaitOne();
+                    remDelegate.EndInvoke(result);
+                }
+            } catch (SocketException)
+            {
+                System.Console.WriteLine("Could not locate server");
+            }
 
         }
     }
@@ -301,6 +311,7 @@ namespace Puppet_Master
                 return s.serverId == this.serverId;
             }
         }
+
         public override int GetHashCode()
         {
             return this.serverId.GetHashCode();
