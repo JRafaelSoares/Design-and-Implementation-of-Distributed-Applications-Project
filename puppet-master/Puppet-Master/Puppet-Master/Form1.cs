@@ -198,6 +198,7 @@ namespace Puppet_Master
                 safeSleep();
                 Puppet p = new Puppet(serverId, null);
                 RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(Servers[p].Crash);
+                remDelegate.BeginInvoke(null, null);
                 Servers.Remove(p);
             } catch (SocketException)
             {
