@@ -68,9 +68,17 @@ namespace MSDAD
 
                 // Get Client URLS
                 int j = i + 1;
-                for (i = j ; i < j + Int32.Parse(args[j-1]) ; ++i)
+                for (i = j ; i < j + Int32.Parse(args[j - 1]) ; ++i)
                 {
                     server.ClientURLs.Add(args[i]);
+                }
+
+                //Create Locations
+                j = i + 1;
+                for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
+                {
+                    System.Console.WriteLine(String.Format("{0} {1} {2}", args[i], args[i + 1], args[i + 2]));
+                    ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
 
                 System.Console.WriteLine(String.Format("ServerId: {0} network_name: {1} port: {2} max faults: {3} min delay: {4} max delay: {5}", args[0], args[1], args[2], args[3], args[4], args[5]));

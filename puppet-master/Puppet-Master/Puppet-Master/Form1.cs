@@ -4,6 +4,7 @@ using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Windows.Forms;
 using MSDAD.Shared;
+using System.Threading;
 
 
 namespace Puppet_Master
@@ -17,6 +18,7 @@ namespace Puppet_Master
         private TcpChannel channel;
         private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
         public delegate string RemoteAsyncDelegate();
+        private int timeToSleep = 0;
         public Form1()
         {
             InitializeComponent();
@@ -35,6 +37,7 @@ namespace Puppet_Master
 
         private void AddRoom(String location, uint capacity, String name)
         {
+            safeSleep();
             this.Locations.Add(new PuppetRoom(location, capacity, name));
 
             foreach(IMSDADServerPuppet serverURL in this.Servers.Values)
@@ -46,6 +49,7 @@ namespace Puppet_Master
         private void CreateServer(String[] url, String serverId, String maxFaults, String minDelay, String maxDelay)
         {
             //Contact PCS
+            safeSleep();
             String ip = url[0];
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + ip + ":10000/PCS");
 
@@ -70,6 +74,13 @@ namespace Puppet_Master
                 }
 
                 args += String.Format("{0} {1}", this.Clients.Values.Count, clients);
+
+                String locals = "";
+                foreach (PuppetRoom room in this.Locations)
+                {
+                    locals += room.ToString()  + " ";
+                }
+                args += String.Format("{0} {1}", this.Locations.Count, locals);
 
                 //Contact Server and get Ref
                 pcs.CreateProcess("Server", args);
@@ -108,6 +119,7 @@ namespace Puppet_Master
 
         private String[] ParseUrl(String url)
         {
+            safeSleep();
             String[] Items = url.Split(':');
             String ip = Items[1].Substring(2);
             String port = Items[2].Split('/')[0];
@@ -116,6 +128,7 @@ namespace Puppet_Master
         }
         private void ParseCommand(String command)
         {
+            safeSleep();
             String[] items = command.Split();
             switch (items[0])
             {
@@ -135,11 +148,18 @@ namespace Puppet_Master
                     Console.WriteLine(String.Format("ClientUrl: {0}\nClientId: {1}\nServerUrl: {2}\nScriptName: {3}", clientUrl, clientId, serverUrl, scriptName));
                     CreateClient(clientUrl, clientId, serverUrl, scriptName);
                     break;
+
+                case "AddRoom":
+                    AddRoom(items[1], UInt32.Parse(items[2]), items[3]);
+                    break;
+                default:
+                    break;
             }
         }
 
         private void Status()
         {
+            safeSleep();
             foreach ( IMSDADServerPuppet server in Servers.Values) {
 
                 // RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(server.Status);
@@ -150,6 +170,28 @@ namespace Puppet_Master
                 //RemoteDel.EndInvoke(result);
 
                 server.Status();
+            }
+
+        }
+
+        //Passar para assíncrono
+        private void Crash(string serverId)
+        {
+            PuppetServer p = new PuppetServer(serverId, null);
+            Servers[p].Crash();
+        }
+
+        private void Wait(int time)
+        {
+            timeToSleep = time;
+        }
+
+        //Passar para assíncrono
+        private void safeSleep()
+        {
+            if(timeToSleep != 0)
+            {
+                Thread.Sleep(timeToSleep);
             }
 
         }
