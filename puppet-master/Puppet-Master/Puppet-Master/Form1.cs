@@ -119,7 +119,6 @@ namespace Puppet_Master
 
         private String[] ParseUrl(String url)
         {
-            safeSleep();
             String[] Items = url.Split(':');
             String ip = Items[1].Substring(2);
             String port = Items[2].Split('/')[0];
@@ -128,7 +127,6 @@ namespace Puppet_Master
         }
         private void ParseCommand(String command)
         {
-            safeSleep();
             String[] items = command.Split();
             switch (items[0])
             {
@@ -177,8 +175,10 @@ namespace Puppet_Master
         //Passar para assíncrono
         private void Crash(string serverId)
         {
+            safeSleep();
             PuppetServer p = new PuppetServer(serverId, null);
             Servers[p].Crash();
+            Servers.Remove(p);
         }
 
         private void Wait(int time)
