@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Windows.Forms;
@@ -6,8 +7,17 @@ using MSDAD.Shared;
 
 namespace Puppet_Master
 {
+    public class PuppetRoom
+    {
+        public String location { get; }
+        public uint capacity { get; }
+        public String name { get; }
+    }
     public partial class Form1 : Form
     {
+        private List<PuppetRoom> Locations;
+        public Dictionary<String, String> Clients;
+        public Dictionary<String, String> Servers;
         private TcpChannel channel;
         private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
         public Form1()
@@ -15,6 +25,9 @@ namespace Puppet_Master
             InitializeComponent();
             this.channel = new TcpChannel(10001);
             ChannelServices.RegisterChannel(channel, false);
+            this.Clients = new Dictionary<string, string>();
+            this.Servers = new Dictionary<string, string>();
+            this.Locations = new List<PuppetRoom>();
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
@@ -33,7 +46,7 @@ namespace Puppet_Master
             }
             else
             {
-                this.textBox1.Text += "Unable to contact PCS";
+                this.textBox1.Text += String.Format("Unable to contact PCS at ip {0}", ip);
             }
         }
 
