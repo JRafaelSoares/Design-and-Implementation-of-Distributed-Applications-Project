@@ -5,6 +5,7 @@ using System.Runtime.Remoting.Channels.Tcp;
 using System.Windows.Forms;
 using MSDAD.Shared;
 
+
 namespace Puppet_Master
 {
 
@@ -15,6 +16,7 @@ namespace Puppet_Master
         public Dictionary<String, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
         private FolderBrowserDialog FolderBrowser = new FolderBrowserDialog();
+        public delegate string RemoteAsyncDelegate();
         public Form1()
         {
             InitializeComponent();
@@ -106,6 +108,22 @@ namespace Puppet_Master
                 case "Client":
                     break;
             }
+        }
+
+        private void Status()
+        {
+            foreach ( IMSDADServerPuppet server in Servers.Values) {
+
+                // RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(server.Status);
+                // Call delegate to remote method
+                //IAsyncResult result = RemoteDel.BeginInvoke(null, null);
+                // Wait for the end of the call and then explictly call EndInvoke
+                //result.AsyncWaitHandle.WaitOne();
+                //RemoteDel.EndInvoke(result);
+
+                server.Status();
+            }
+
         }
 
         private void button1_Click(object sender, EventArgs e)
