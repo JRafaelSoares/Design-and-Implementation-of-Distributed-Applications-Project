@@ -106,7 +106,7 @@ namespace MSDAD
             void AddRoom(String location, uint capacity, String roomName);
             void Status();
 
-            string Crash();
+            void Crash();
 
             void Freeze();
 

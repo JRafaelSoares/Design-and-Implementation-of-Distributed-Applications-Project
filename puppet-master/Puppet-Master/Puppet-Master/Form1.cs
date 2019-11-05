@@ -18,7 +18,7 @@ namespace Puppet_Master
         public Dictionary<PuppetServer, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
         private OpenFileDialog FolderBrowser = new OpenFileDialog();
-        public delegate string RemoteAsyncDelegate();
+        public delegate void RemoteAsyncDelegate();
         private int timeToSleep = 0;
 
         public Form1()
@@ -109,6 +109,8 @@ namespace Puppet_Master
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + clientIp + ":10000/PCS");
             if (pcs != null)
             {
+                String fullUrl = "tcp://" + clientIp + ":" + clientUrl[1] + "/" + clientUrl[2];
+                this.Clients.Add(clientId, fullUrl);
                 String args = String.Format("{0} {1} {2} {3} {4}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName);
                 pcs.CreateProcess("Client", args);
             }
@@ -310,6 +312,6 @@ namespace Puppet_Master
         }
 
     }
-    }
+}
 
 
