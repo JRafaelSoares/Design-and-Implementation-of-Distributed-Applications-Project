@@ -15,6 +15,8 @@ namespace MSDAD
 
         public interface IMSDADServer
         {
+            void NewClient(String url, String id);
+
             void CreateMeeting(string coordId, string topic, uint minParticipants, List<String> slots, HashSet<string> invitees = null);
 
             void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
@@ -111,6 +113,17 @@ namespace MSDAD
             void Freeze();
 
             void Unfreeze();
+        }
+
+        public interface IMSDADServerToServer
+        {
+            List<String> registerNewServer(String url, String id);
+            void registerNewClient(String url, String id);
+        }
+
+        public interface IMSDADClientToClient
+        {
+
         }
     }
 }

@@ -65,16 +65,8 @@ namespace Puppet_Master
 
                 args += String.Format(" {0} {1}", this.Servers.Values.Count, servers);
 
-                //Give Server URL of all Clients currently joined
-                String clients = "";
                 
-                foreach (String client in this.Clients.Values)
-                {
-                    clients += client + " ";
-                }
-
-                args += String.Format("{0} {1}", this.Clients.Values.Count, clients);
-
+                //Give Server All Locations
                 String locals = "";
                 foreach (PuppetRoom room in this.Locations)
                 {
