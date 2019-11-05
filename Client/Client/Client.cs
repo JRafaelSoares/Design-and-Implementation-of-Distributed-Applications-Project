@@ -158,6 +158,8 @@ namespace MSDAD
                 TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
                 ChannelServices.RegisterChannel(channel, false);
                 IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
+
+
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
@@ -165,8 +167,13 @@ namespace MSDAD
                 }
                 else
                 {
+ 
+
                     Client client = new Client(server, args[0]);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
+
+                    //Register Client with server
+                    server.NewClient(args[2], args[0]);
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {

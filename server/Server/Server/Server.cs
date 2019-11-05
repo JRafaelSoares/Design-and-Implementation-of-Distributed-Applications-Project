@@ -11,7 +11,40 @@ namespace MSDAD
 {
     namespace Server
     {
-        class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet
+
+        class ServerClient
+        {
+            public String Url { get; }
+            public String clientId { get; }
+            public ServerClient(String url, String clientId)
+            {
+                this.Url = url;
+                this.clientId = clientId;
+            }
+
+          
+            public override bool Equals(Object obj)
+            {
+                //Check for null and compare run-time types.
+                if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+                {
+                    return false;
+                }
+                else
+                {
+                    ServerClient s = (ServerClient)obj;
+                    return s.clientId == this.clientId;
+                }
+            }
+
+            public override int GetHashCode()
+            {
+                return this.clientId.GetHashCode();
+            }
+
+
+        }
+        class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet, IMSDADServerToServer
         {
             private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
 
@@ -31,8 +64,8 @@ namespace MSDAD
 
             //private static int ticket = 0;
             //private static int currentTicket = 0;
-            public List<String> ServerURLs { get; } = new List<String>();
-            public List<String> ClientURLs { get; } = new List<String>();
+            public List<IMSDADServerToServer> ServerURLs { get; } = new List<IMSDADServerToServer>();
+            public HashSet<ServerClient> ClientURLs { get; } = new HashSet<ServerClient>();
 
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay)
             {
@@ -45,9 +78,9 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                if(args.Length < 9)
+                if(args.Length < 8)
                 {
-                    Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay num_servers server_urls num_clients client_urls numLocations locations");
+                    Console.WriteLine("<Usage> Server server_id network_name port max_faults min_delay max_delay num_servers server_urls numLocations locations");
                     System.Console.WriteLine(" Press < enter > to shutdown server...");
                     System.Console.ReadLine();
                     return;
@@ -59,22 +92,26 @@ namespace MSDAD
                 Server server = new Server(args[0], UInt32.Parse(args[3]), Int32.Parse(args[4]), Int32.Parse(args[5]));
                 RemotingServices.Marshal(server, args[1], typeof(Server));
 
-                //Get Server URLS
+                //Get Server URLS and connect to them
                 int i;
                 for (i = 7; i < 7 + Int32.Parse(args[6]); ++i)
                 {
-                    server.ServerURLs.Add(args[i]);
+                    IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
+                    if (otherServer != null)
+                    {
+                        server.ServerURLs.Add(otherServer);
+                    }
+                    else
+                    {
+                        System.Console.WriteLine("Cannot connect to server at address {0}", args[i]);
+                    }
                 }
 
                 // Get Client URLS
-                int j = i + 1;
-                for (i = j ; i < j + Int32.Parse(args[j - 1]) ; ++i)
-                {
-                    server.ClientURLs.Add(args[i]);
-                }
+                
 
                 //Create Locations
-                j = i + 1;
+                int j = i + 1;
                 for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
                 {
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
@@ -253,6 +290,28 @@ namespace MSDAD
             void IMSDADServerPuppet.Unfreeze() { }
             void IMSDADServerPuppet.Status() { }
 
+            void IMSDADServer.NewClient(string url, string id)
+            {
+                
+                registerNewClient(url, id);
+                
+                foreach(IMSDADServerToServer server in this.ServerURLs)
+                {
+                    server.registerNewClient(url, id);
+                }
+            }
+
+            public List<string> registerNewServer(string url, string id)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void registerNewClient(string url, string id)
+            {
+                lock (ClientURLs) {
+                    this.ClientURLs.Add(new ServerClient(url, id));
+                }
+            }
         }
     }
 }

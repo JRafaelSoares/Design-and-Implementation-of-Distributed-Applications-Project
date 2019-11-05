@@ -67,16 +67,8 @@ namespace Puppet_Master
 
                 args += String.Format(" {0} {1}", this.Servers.Values.Count, servers);
 
-                //Give Server URL of all Clients currently joined
-                String clients = "";
                 
-                foreach (String client in this.Clients.Values)
-                {
-                    clients += client + " ";
-                }
-
-                args += String.Format("{0} {1}", this.Clients.Values.Count, clients);
-
+                //Give Server All Locations
                 String locals = "";
                 foreach (PuppetRoom room in this.Locations)
                 {
@@ -109,6 +101,8 @@ namespace Puppet_Master
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + clientIp + ":10000/PCS");
             if (pcs != null)
             {
+                String fullUrl = "tcp://" + clientIp + ":" + clientUrl[1] + "/" + clientUrl[2];
+                this.Clients.Add(clientId, fullUrl);
                 String args = String.Format("{0} {1} {2} {3} {4}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName);
                 pcs.CreateProcess("Client", args);
             }
@@ -313,6 +307,6 @@ namespace Puppet_Master
         }
 
     }
-    }
+}
 
 
