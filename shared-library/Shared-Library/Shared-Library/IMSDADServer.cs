@@ -17,7 +17,7 @@ namespace MSDAD
         {
             void NewClient(String url, String id);
 
-            void CreateMeeting(string coordId, string topic, uint minParticipants, List<String> slots, HashSet<string> invitees = null);
+            HashSet<ServerClient> CreateMeeting(string topic, Meeting meeting);
 
             void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
@@ -119,12 +119,15 @@ namespace MSDAD
         {
             HashSet<ServerClient> RegisterNewServer(String url);
             void registerNewClient(String url, String id);
+
+            void CreateMeeting(String topic, Meeting meeting);
         }
 
         public interface IMSDADClientToClient
         {
-
+            void CreateMeeting(String topic, Meeting meeting);
         }
+
     }
 
     [Serializable]

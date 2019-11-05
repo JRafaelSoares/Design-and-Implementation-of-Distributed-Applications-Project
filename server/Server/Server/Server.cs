@@ -125,24 +125,19 @@ namespace MSDAD
                 return;
             }
 
-            void IMSDADServer.CreateMeeting(string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
+            HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
                 SafeSleep();
-                lock(CreateMeetingLock) {
-                    bool found = Meetings.TryGetValue(topic, out Meeting meeting);
-                    if (found)
-                    {
-                        throw new CannotCreateMeetingException("A meeting with that topic already exists");
-                    }
-                    if (invitees == null)
-                    {
-                        Meetings.Add(topic, new Meeting(coordId, topic, minParticipants, slots));
-                    }
-                    else
-                    {
-                        Meetings.Add(topic, new MeetingInvitees(coordId, topic, minParticipants, slots, invitees));
-                    }
+                lock (CreateMeetingLock) {
+                    Meetings.Add(topic, meeting);
                 }
+
+                foreach(IMSDADServerToServer server in ServerURLs)
+                {
+                    server.CreateMeeting(topic, meeting);
+                }
+                
+                return ClientURLs;
             }
 
 
@@ -301,6 +296,16 @@ namespace MSDAD
                     this.ClientURLs.Add(new ServerClient(url, id));
                 }
             }
+
+            void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
+            {
+                lock (CreateMeetingLock)
+                {
+                    Meetings.Add(topic, meeting);
+                    Console.WriteLine(meeting.ToString());
+                }
+            }
+
         }
     }
 }

@@ -14,11 +14,14 @@ namespace MSDAD
     {
         public delegate String parseDelegate();
 
-        class Client : MarshalByRefObject
+        class Client : MarshalByRefObject, IMSDADClientToClient
         {
             private readonly IMSDADServer Server;
             private readonly String UserId;
             private int milliseconds;
+            private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
+            private static readonly Object CreateMeetingLock = new object();
+
 
             public Client(IMSDADServer server, String userId)
             {
@@ -66,7 +69,27 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {
-                    Server.CreateMeeting(this.UserId, topic, min_atendees, slots, invitees);
+                    Meeting meeting;
+
+                    if (invitees == null)
+                    {
+                        meeting = new Meeting(this.UserId, topic, min_atendees, slots);
+                        Meetings.Add(topic, meeting);
+                    }
+                    else
+                    {
+                        meeting = new MeetingInvitees(this.UserId, topic, min_atendees, slots, invitees);
+                        Meetings.Add(topic, meeting);
+                    }
+
+                    HashSet<ServerClient> clients = Server.CreateMeeting(topic, meeting);
+
+                    foreach(ServerClient client in clients)
+                    {
+                        IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
+                        otherClient.CreateMeeting(topic, meeting);
+                    }
+
                 } catch(CannotCreateMeetingException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
@@ -145,7 +168,16 @@ namespace MSDAD
                     }
                 }
 
-            } 
+            }
+
+            void IMSDADClientToClient.CreateMeeting(String topic, Meeting meeting)
+            {
+                lock (CreateMeetingLock)
+                {
+                    Meetings.Add(topic, meeting);
+                    Console.WriteLine(meeting.ToString());
+                }
+            }
 
             static void Main(string[] args)
             {
