@@ -77,7 +77,6 @@ namespace MSDAD
                 j = i + 1;
                 for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
                 {
-                    System.Console.WriteLine(String.Format("{0} {1} {2}", args[i], args[i + 1], args[i + 2]));
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
 
