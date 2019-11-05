@@ -179,9 +179,8 @@ namespace Puppet_Master
                 foreach (IMSDADServerPuppet server in Servers.Values)
                 {
                     RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.Status);
-                    IAsyncResult result = remDelegate.BeginInvoke(null, null);
-                    result.AsyncWaitHandle.WaitOne();
-                    remDelegate.EndInvoke(result);
+                    remDelegate.BeginInvoke(null, null);
+                  
                 }
 
             } catch(SocketException)

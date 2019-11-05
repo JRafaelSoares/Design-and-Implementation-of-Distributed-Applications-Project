@@ -122,6 +122,8 @@ namespace MSDAD
         {
             HashSet<ServerClient> RegisterNewServer(String url);
             void registerNewClient(String url, String id);
+
+            string ping();
         }
 
         public interface IMSDADClientToClient

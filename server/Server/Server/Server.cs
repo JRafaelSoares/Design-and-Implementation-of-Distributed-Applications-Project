@@ -260,7 +260,19 @@ namespace MSDAD
             }
             void IMSDADServerPuppet.Freeze() { }
             void IMSDADServerPuppet.Unfreeze() { }
-            void IMSDADServerPuppet.Status() { }
+            void IMSDADServerPuppet.Status()
+            {
+                foreach(IMSDADServerToServer server in ServerURLs)
+                {
+                    String id = server.ping();
+                    Console.WriteLine(id);
+                }
+            }
+
+            String IMSDADServerToServer.ping() {
+                return this.SeverId;
+
+            }
 
             void IMSDADServer.NewClient(string url, string id)
             {
