@@ -167,7 +167,6 @@ namespace MSDAD
                     Console.ReadLine();
                 }
 
-                //IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
