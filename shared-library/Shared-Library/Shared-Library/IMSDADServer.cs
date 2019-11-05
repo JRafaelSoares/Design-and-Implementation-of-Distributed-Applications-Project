@@ -123,7 +123,7 @@ namespace MSDAD
             HashSet<ServerClient> RegisterNewServer(String url);
             void registerNewClient(String url, String id);
 
-            string ping();
+            String ping();
         }
 
         public interface IMSDADClientToClient
