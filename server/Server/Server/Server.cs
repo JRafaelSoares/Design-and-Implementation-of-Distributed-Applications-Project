@@ -46,11 +46,6 @@ namespace MSDAD
 
             static void Main(string[] args)
             {
-                foreach(String arg in args)
-                {
-                    Console.WriteLine(arg);
-                }
-                Console.ReadLine();
 
                 if (args.Length < 9)
                 {
@@ -91,13 +86,9 @@ namespace MSDAD
                 int j = i + 1;
                 for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
                 {
-                    Console.WriteLine(args[i]);
-                    Console.WriteLine(args[i+1]);
-                    Console.WriteLine(args[i+2]);
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
-                Console.ReadLine();
-
+                
                 server.CalculateMeetingState(allMeetings);
 
                 System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
@@ -165,6 +156,9 @@ namespace MSDAD
             {
                 SafeSleep();
                 lock (CreateMeetingLock) {
+                    foreach(Slot s in meeting.Slots) {
+                        s.Location = Location.FromName(s.LocationString);
+                    }
                     Meetings.Add(topic, meeting);
                 }
 

@@ -95,8 +95,11 @@ namespace MSDAD
 
                     foreach(ServerClient client in clients)
                     {
-                        IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
-                        otherClient.CreateMeeting(topic, meeting);
+                        if (client.ClientId != UserId)
+                        {
+                            IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
+                            otherClient.CreateMeeting(topic, meeting);
+                        }
                     }
 
                 } catch(CannotCreateMeetingException e)
@@ -214,7 +217,7 @@ namespace MSDAD
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
                     //Register Client with server
-                    server.NewClient("tcp://" + args[5] + args[1] + "/" + args[2], args[0]);
+                    server.NewClient("tcp://" + args[5] + ":" +  args[1] + "/" + args[2], args[0]);
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {

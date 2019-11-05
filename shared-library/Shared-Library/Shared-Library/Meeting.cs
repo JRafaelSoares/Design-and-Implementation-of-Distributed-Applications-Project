@@ -28,10 +28,11 @@ namespace MSDAD
         [Serializable]
         public class Slot
         {
-            public Location Location { get; }
+            public Location Location { get; set; }
             public DateTime Date { get; }
 
             public List<Join> UserIds = new List<Join>();
+            public String LocationString;
 
             public Slot(Location location, DateTime date)
             {
@@ -45,7 +46,8 @@ namespace MSDAD
                 this.Location = Location.FromName(items[0]);
                 if (this.Location == null)
                 {
-                    throw new LocationDoesNotExistException("Location given does not exist");
+                    this.Location = new Location(items[0]);
+                    this.LocationString = items[0];
                 }
                 this.Date = DateTime.Parse(items[1]).Date;
             }
