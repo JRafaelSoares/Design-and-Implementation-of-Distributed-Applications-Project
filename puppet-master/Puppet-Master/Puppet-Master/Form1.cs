@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using MSDAD.Shared;
 using System.Threading;
 using System.IO;
+using System.Net.Sockets;
 
 namespace Puppet_Master
 {
@@ -17,8 +18,9 @@ namespace Puppet_Master
         public Dictionary<PuppetServer, IMSDADServerPuppet> Servers;
         private TcpChannel channel;
         private OpenFileDialog FolderBrowser = new OpenFileDialog();
-        public delegate string RemoteAsyncDelegate();
+        public delegate void RemoteAsyncDelegate();
         private int timeToSleep = 0;
+
         public Form1()
         {
             InitializeComponent();
@@ -99,6 +101,8 @@ namespace Puppet_Master
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + clientIp + ":10000/PCS");
             if (pcs != null)
             {
+                String fullUrl = "tcp://" + clientIp + ":" + clientUrl[1] + "/" + clientUrl[2];
+                this.Clients.Add(clientId, fullUrl);
                 String args = String.Format("{0} {1} {2} {3} {4}", clientId, clientUrl[1], clientUrl[2], serverUrl, scriptName);
                 pcs.CreateProcess("Client", args);
             }
@@ -155,30 +159,46 @@ namespace Puppet_Master
             }
         }
 
+        //Testar
         private void Status()
         {
-            safeSleep();
-            foreach ( IMSDADServerPuppet server in Servers.Values) {
 
-                // RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(server.Status);
-                // Call delegate to remote method
-                //IAsyncResult result = RemoteDel.BeginInvoke(null, null);
-                // Wait for the end of the call and then explictly call EndInvoke
-                //result.AsyncWaitHandle.WaitOne();
-                //RemoteDel.EndInvoke(result);
+            try { 
+            
+                safeSleep();
 
-                server.Status();
+                foreach (IMSDADServerPuppet server in Servers.Values)
+                {
+                    RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(server.Status);
+                    IAsyncResult result = remDelegate.BeginInvoke(null, null);
+                    result.AsyncWaitHandle.WaitOne();
+                    remDelegate.EndInvoke(result);
+                }
+
+            } catch(SocketException)
+            {
+                System.Console.WriteLine("Could not locate server");
             }
 
         }
 
-        //Passar para assíncrono
+        //Testar 
         private void Crash(string serverId)
         {
-            safeSleep();
-            PuppetServer p = new PuppetServer(serverId, null);
-            Servers[p].Crash();
-            Servers.Remove(p);
+            try
+            {
+                safeSleep();
+                PuppetServer p = new PuppetServer(serverId, null);
+                RemoteAsyncDelegate remDelegate = new RemoteAsyncDelegate(Servers[p].Crash);
+                IAsyncResult RemAr = remDelegate.BeginInvoke(null, null);
+                RemAr.AsyncWaitHandle.WaitOne();
+                remDelegate.EndInvoke(RemAr);
+                Servers.Remove(p);
+            } catch (SocketException)
+            {
+                System.Console.WriteLine("Could not locate server");
+            }
+
         }
 
         private void Wait(int time)
@@ -288,6 +308,6 @@ namespace Puppet_Master
         }
 
     }
-    }
+}
 
 
