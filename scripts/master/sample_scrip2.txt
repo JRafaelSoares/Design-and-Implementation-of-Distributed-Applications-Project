@@ -1,0 +1,7 @@
+Server s1 tcp://localhost:3000/server1 0 100 200
+Wait 2000
+Client c1 tcp://localhost:4000/client1 tcp://localhost:3000/server1 sample_script1
+Wait 2000
+Client c2 tcp://localhost:4002/client2 tcp://localhost:3000/server1 sample_script1
+Wait 2000
+Server s2 tcp://localhost:3006/server1 0 100 200

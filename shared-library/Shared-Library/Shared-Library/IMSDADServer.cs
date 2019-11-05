@@ -157,8 +157,6 @@ namespace MSDAD
         {
             return this.clientId.GetHashCode();
         }
-
-
     }
 }
 

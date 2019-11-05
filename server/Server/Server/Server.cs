@@ -6,7 +6,6 @@ using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Linq;
 using System.Threading;
-using System.Net;
 
 namespace MSDAD
 {
@@ -32,6 +31,7 @@ namespace MSDAD
 
             //private static int ticket = 0;
             //private static int currentTicket = 0;
+
             public List<IMSDADServerToServer> ServerURLs { get; } = new List<IMSDADServerToServer>();
             public HashSet<ServerClient> ClientURLs { get; } = new HashSet<ServerClient>();
 
@@ -64,18 +64,19 @@ namespace MSDAD
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
+                    System.Console.WriteLine(args[i]);
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
                     if (otherServer != null)
                     {
                         server.ServerURLs.Add(otherServer);
-                        otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]);   
+                        server.AddUsers(otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]));   
                     }
                     else
                     {
                         System.Console.WriteLine("Cannot connect to server at address {0}", args[i]);
                     }
+                    
                 }
-                
 
                 //Create Locations
                 int j = i + 1;
@@ -260,11 +261,19 @@ namespace MSDAD
             void IMSDADServer.NewClient(string url, string id)
             {
                 
-                registerNewClient(url, id);
+                this.registerNewClient(url, id);
                 
                 foreach(IMSDADServerToServer server in this.ServerURLs)
                 {
                     server.registerNewClient(url, id);
+                }
+            }
+
+            void AddUsers(HashSet<ServerClient> clients)
+            {
+                foreach (ServerClient client in clients)
+                {
+                    this.ClientURLs.Add(client);
                 }
             }
 
@@ -281,10 +290,9 @@ namespace MSDAD
                     {
                         System.Console.WriteLine("Cannot connect to server at address {0}", url);
                     }
-                }
 
+                }
                 return ClientURLs;
-               
             }
 
             public void registerNewClient(string url, string id)
