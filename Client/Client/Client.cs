@@ -35,12 +35,17 @@ namespace MSDAD
             {
                 SafeSleep();
 
-                foreach (KeyValuePair<string, Meeting> meeting in Meetings)
+                Dictionary<String, Meeting> received = Server.ListMeetings(this.Meetings);
+                foreach(Meeting recv in received.Values)
                 {
-                    Console.WriteLine(meeting.Value.ToString());
+                    this.Meetings[recv.Topic] = recv;
+
                 }
 
-                //String meetings = Server.ListMeetings(this.UserId);
+                foreach(Meeting recv in Meetings.Values)
+                {
+                    Console.WriteLine(recv.ToString());
+                }
             }
 
             private void JoinMeeting(String topic, List<String> slots)
@@ -187,7 +192,6 @@ namespace MSDAD
                 lock (CreateMeetingLock)
                 {
                     Meetings.Add(topic, meeting);
-                    Console.WriteLine(meeting.ToString());
                 }
             }
 

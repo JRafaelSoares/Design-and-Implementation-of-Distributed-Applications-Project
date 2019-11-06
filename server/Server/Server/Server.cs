@@ -94,7 +94,7 @@ namespace MSDAD
                 System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
-            }
+                }
 
             void CalculateMeetingState(List<Dictionary<String, Meeting>> meetings)
             {
@@ -163,8 +163,22 @@ namespace MSDAD
                 {
                     server.CreateMeeting(topic, meeting);
                 }
-
-                return ClientURLs;
+                if (meeting.GetType() == typeof(MeetingInvitees))
+                {
+                    MeetingInvitees invRef = (MeetingInvitees)meeting;
+                    HashSet<ServerClient> invitees = new HashSet<ServerClient>();
+                    foreach (ServerClient client in ClientURLs) {
+                        if (invRef.Invitees.Contains(client.ClientId))
+                        {
+                            invitees.Add(client);
+                        }
+                    }
+                    return invitees;
+                }
+                else
+                {
+                    return ClientURLs;
+                }
             }
 
 
@@ -205,22 +219,22 @@ namespace MSDAD
             {
 
                 SafeSleep();
-                foreach (Meeting meeting in meetings.Values)
+                foreach (String key in meetings.Keys.ToList())
                 {
-                    bool found = this.Meetings.TryGetValue(meeting.Topic, out Meeting myMeeting);
-                    
+                    bool found = this.Meetings.TryGetValue(key, out Meeting myMeeting);
+
                     if (!found)
                     {
-                        
-                        Meetings.TryAdd(meeting.Topic, meeting);
+
+                        Meetings.TryAdd(key, meetings[key]);
                     }
                     else
                     {
-                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(meeting.Topic)))
+                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(key)))
                         {
-                            Meeting upToDate = myMeeting.MergeMeeting(meeting);
-                            this.Meetings[meeting.Topic] = upToDate;
-                            meetings[meeting.Topic] = upToDate;
+                            Meeting upToDate = myMeeting.MergeMeeting(meetings[key]);
+                            this.Meetings[key] = upToDate;
+                            meetings[key] = upToDate;
                         }
                     }
                 }
@@ -392,11 +406,11 @@ namespace MSDAD
             {
                 lock (CreateMeetingLock)
                 {
-                    if(!Meetings.TryAdd(topic, meeting))
+                    if (!Meetings.TryAdd(topic, meeting))
                     {
                         Meetings[topic] = Meetings[topic].MergeMeeting(meeting);
                     }
-                    
+
 
                 }
             }

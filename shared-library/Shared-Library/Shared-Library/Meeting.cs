@@ -262,16 +262,16 @@ namespace MSDAD
                     }
                     else
                     {
-                        foreach (Join user in other.Users)
+                        foreach (Join user in this.Users)
                         {
-                            if (!this.Users.Contains(user))
+                            if (!other.Users.Contains(user))
                             {
-                                this.Users.Add(user);
+                                other.Users.Add(user);
                             }
                         }
-                        foreach (Slot slot in other.Slots)
+                        foreach (Slot slot in this.Slots)
                         {
-                            Slot mySlot = this.Slots.First(s => s.Equals(slot));
+                            Slot mySlot = other.Slots.First(s => s.Equals(slot));
 
                             foreach (Join user in slot.UserIds)
                             {
