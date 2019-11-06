@@ -18,43 +18,38 @@ namespace MSDAD
                 this.UserId = userId;
                 this.Timestamp = timestamp;
             }
-            
+
             public override string ToString()
             {
-                return String.Format("({0},{1})",UserId.ToString() , Timestamp.ToString());
+                return String.Format("({0},{1})", UserId.ToString(), Timestamp.ToString());
             }
         }
 
         [Serializable]
         public class Slot
         {
-            public Location Location { get; set; }
+            public String LocationString { get; set; }
+            public Location Location { get { return Location.Locations[this.LocationString]; } }
             public DateTime Date { get; }
 
             public List<Join> UserIds = new List<Join>();
-            public String LocationString;
-
-            public Slot(Location location, DateTime date)
+            
+            public Slot(String location, DateTime date)
             {
-                this.Location = location;
+                this.LocationString = location;
                 this.Date = date.Date;
             }
 
             public Slot(string slots)
             {
                 String[] items = slots.Split(',');
-                this.Location = Location.FromName(items[0]);
-                if (this.Location == null)
-                {
-                    this.Location = new Location(items[0]);
-                    this.LocationString = items[0];
-                }
+                this.LocationString = items[0];
                 this.Date = DateTime.Parse(items[1]).Date;
             }
 
             public virtual new string ToString()
             {
-                String s = String.Format("(Date:{0}, Location:{1})\nAtendees: ", Date.ToShortDateString(), Location.ToString());
+                String s = String.Format("(Date:{0}, Location:{1})\nAtendees: ", Date.ToShortDateString(), Location);
                 foreach (Join u in UserIds)
                 {
                     s += u.ToString() + " ";
@@ -125,7 +120,7 @@ namespace MSDAD
             //Room set when meeting is closed
             public Room Room { get; set; }
 
-            public ClosedSlot(Slot slot, Room room, List<Join> joins) : base(slot.Location, slot.Date)
+            public ClosedSlot(Slot slot, Room room, List<Join> joins) : base(slot.LocationString, slot.Date)
             {
                 this.UserIds = slot.UserIds;
                 this.Room = room;
@@ -153,7 +148,7 @@ namespace MSDAD
             public List<Slot> Slots { get; set; }
             public List<Join> Users;
             public enum State { Open = 1, Pending = 2, Closed = 3, Canceled = 4 }
-            public State CurState { get; set;}
+            public State CurState { get; set; }
 
             public Meeting(String coordenatorID, String topic, uint minParticipants, List<String> slots)
             {
@@ -185,7 +180,7 @@ namespace MSDAD
                 return this.Topic.GetHashCode();
             }
 
-            public  virtual new String ToString()
+            public virtual new String ToString()
             {
                 StringBuilder builder = new StringBuilder();
                 builder.Append(String.Format("Coordenator: {0}\n", this.CoordenatorID));
@@ -237,7 +232,7 @@ namespace MSDAD
 
                 Room bestRoom = chosenSlot.Location.GetBestFittingRoomForCapacity(chosenSlot.Date, numUsers);
                 bestRoom.AddBooking(chosenSlot.Date);
-                
+
                 Users.Sort((x, y) =>
                 {
                     return x.Timestamp <= y.Timestamp ? -1 : 1;
@@ -247,48 +242,49 @@ namespace MSDAD
                 this.Slots = new List<Slot> { new ClosedSlot(chosenSlot, bestRoom, Users) };
             }
 
+            
+
             public Meeting MergeMeeting(Meeting other)
             {
-                
-                if(this.CurState == State.Closed)
+                if (this.CurState > other.CurState)
                 {
                     return this;
                 }
-                if (other.CurState == State.Closed)
+                else if (this.CurState < other.CurState)
                 {
                     return other;
                 }
-                if (this.CurState != State.Open)
+                else
                 {
-                    return this;
-                }
-                if (other.CurState != State.Open)
-                {
-                    return other;
-                }
-                //Both are Open After this
-                foreach (Join user in this.Users)
-                {
-                    if (!other.Users.Contains(user))
+                    if (this.CurState != State.Open)
                     {
-                        other.Users.Add(user);
+                        return this;
                     }
-                }
-                foreach (Slot slot in this.Slots)
-                {
-                    Slot otherSlot = other.Slots.First(s => s.Equals(slot));
-
-                    foreach(Join user in slot.UserIds)
+                    else
                     {
-                        if (! otherSlot.UserIds.Contains(user))
+                        foreach (Join user in other.Users)
                         {
-                            otherSlot.UserIds.Add(user);
+                            if (!this.Users.Contains(user))
+                            {
+                                this.Users.Add(user);
+                            }
                         }
+                        foreach (Slot slot in other.Slots)
+                        {
+                            Slot mySlot = this.Slots.First(s => s.Equals(slot));
+
+                            foreach (Join user in slot.UserIds)
+                            {
+                                if (!mySlot.UserIds.Contains(user))
+                                {
+                                    mySlot.UserIds.Add(user);
+                                }
+                            }
+                        }
+                        return other;
                     }
                 }
-                return other;
             }
-
         }
 
         [Serializable]
@@ -305,7 +301,8 @@ namespace MSDAD
             {
                 StringBuilder builder = new StringBuilder();
                 builder.Append("Invitees:\n");
-                foreach (String invitee in Invitees) {
+                foreach (String invitee in Invitees)
+                {
                     builder.Append(invitee + "\n");
                 }
                 return base.ToString() + builder.ToString(); ;
@@ -319,4 +316,6 @@ namespace MSDAD
         }
     }
 }
-    
+
+
+

@@ -6,14 +6,14 @@ using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Linq;
 using System.Threading;
-
+using System.Collections.Concurrent;
 namespace MSDAD
 {
     namespace Server
     {
         class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet, IMSDADServerToServer
         {
-            private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
+            private readonly ConcurrentDictionary<String, Meeting> Meetings = new ConcurrentDictionary<string, Meeting>();
 
             private readonly String SeverId;
 
@@ -41,7 +41,7 @@ namespace MSDAD
                 this.MaxFaults = MaxFaults;
                 this.MinDelay = MinDelay;
                 this.MaxDelay = MaxDelay;
-                
+
             }
 
             static void Main(string[] args)
@@ -79,7 +79,7 @@ namespace MSDAD
                     {
                         System.Console.WriteLine("Cannot connect to server at address {0}", args[i]);
                     }
-                    
+
                 }
 
                 //Create Locations
@@ -88,7 +88,7 @@ namespace MSDAD
                 {
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
-                
+
                 server.CalculateMeetingState(allMeetings);
 
                 System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
@@ -98,19 +98,19 @@ namespace MSDAD
 
             void CalculateMeetingState(List<Dictionary<String, Meeting>> meetings)
             {
-                lock(Meetings) {
+                lock (Meetings)
+                {
                     foreach (Dictionary<String, Meeting> meetingDict in meetings)
                     {
                         foreach (Meeting meeting in meetingDict.Values)
                         {
                             if (!this.Meetings.ContainsKey(meeting.Topic))
                             {
-                                this.Meetings.Add(meeting.Topic, meeting);
+                                this.Meetings.TryAdd(meeting.Topic, meeting);
                             }
                             else if (this.Meetings[meeting.Topic].CurState == Meeting.State.Open && meeting.CurState != Meeting.State.Open)
                             {
-                                this.Meetings.Remove(meeting.Topic);
-                                this.Meetings.Add(meeting.Topic, meeting);
+                                this.Meetings[meeting.Topic] = meeting;
                             }
                         }
                     }
@@ -154,18 +154,16 @@ namespace MSDAD
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
                 SafeSleep();
-                lock (CreateMeetingLock) {
-                    foreach(Slot s in meeting.Slots) {
-                        s.Location = Location.FromName(s.LocationString);
-                    }
-                    Meetings.Add(topic, meeting);
+                lock (CreateMeetingLock)
+                {
+                    Meetings.TryAdd(topic, meeting);
                 }
 
-                foreach(IMSDADServerToServer server in ServerURLs)
+                foreach (IMSDADServerToServer server in ServerURLs)
                 {
                     server.CreateMeeting(topic, meeting);
                 }
-                
+
                 return ClientURLs;
             }
 
@@ -179,14 +177,14 @@ namespace MSDAD
                 {
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
-                if(meeting.CurState != Meeting.State.Open)
+                if (meeting.CurState != Meeting.State.Open)
                 {
                     throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
-                lock (meeting)
+                lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
-                    
+
                     if (!meeting.CanJoin(userId))
                     {
                         throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.\n");
@@ -195,24 +193,38 @@ namespace MSDAD
                     List<Slot> givenSlots = Slot.ParseSlots(slots);
                     foreach (Slot slot in meeting.Slots.Where(x => givenSlots.Contains(x)))
                     {
-                       
+
                         slot.AddUserId(userId, timestamp);
-                        
+
                     }
                     meeting.AddUser(userId, timestamp);
                 }
             }
 
-            String IMSDADServer.ListMeetings(String userId)
+            Dictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
             {
+
                 SafeSleep();
-                Thread.Sleep(random.Next(MinDelay, MaxDelay));
-                String meetings = "";
-                foreach (Meeting meeting in Meetings.Values.Where(x => x.CanJoin(userId)).ToList())
+                foreach (Meeting meeting in meetings.Values)
                 {
+                    bool found = this.Meetings.TryGetValue(meeting.Topic, out Meeting myMeeting);
                     
-                        meetings += meeting.ToString();
+                    if (!found)
+                    {
+                        
+                        Meetings.TryAdd(meeting.Topic, meeting);
+                    }
+                    else
+                    {
+                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(meeting.Topic)))
+                        {
+                            Meeting upToDate = myMeeting.MergeMeeting(meeting);
+                            this.Meetings[meeting.Topic] = upToDate;
+                            meetings[meeting.Topic] = upToDate;
+                        }
+                    }
                 }
+
                 return meetings;
             }
 
@@ -221,15 +233,16 @@ namespace MSDAD
                 SafeSleep();
 
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
-                
-                if ((!found) || meeting.CurState != Meeting.State.Open) { 
+
+                if ((!found) || meeting.CurState != Meeting.State.Open)
+                {
                     throw new TopicDoesNotExistException("Topic " + topic + " cannot be closed\n");
                 }
                 //Lock other threads from closing any other Meetings
                 lock (this.Meetings)
                 {
                     //Lock other threads from joining this meeting
-                    lock (meeting)
+                    lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                     {
                         if (meeting.CoordenatorID != userId)
                         {
@@ -282,42 +295,47 @@ namespace MSDAD
                     local.AddRoom(new Room(roomName, capacity));
                 }
             }
-            void IMSDADServerPuppet.Crash() {
+            void IMSDADServerPuppet.Crash()
+            {
                 Environment.Exit(1);
             }
-            void IMSDADServerPuppet.Freeze() {
+            void IMSDADServerPuppet.Freeze()
+            {
                 throw new NotImplementedException();
             }
-            void IMSDADServerPuppet.Unfreeze() {
+            void IMSDADServerPuppet.Unfreeze()
+            {
                 throw new NotImplementedException();
             }
             void IMSDADServerPuppet.Status()
             {
-                
-                foreach(IMSDADServerToServer server in ServerURLs)
+
+                foreach (IMSDADServerToServer server in ServerURLs)
                 {
                     try
                     {
                         String id = server.Ping();
                         Console.WriteLine(String.Format("Server {0} is alive", id));
-                    } catch (RemotingException )
+                    }
+                    catch (RemotingException)
                     {
                         Console.WriteLine("Could not contact Server");
                     }
                 }
             }
 
-            String IMSDADServerToServer.Ping() {
+            String IMSDADServerToServer.Ping()
+            {
                 return this.SeverId;
 
             }
 
             void IMSDADServer.NewClient(string url, string id)
             {
-                
+
                 ((IMSDADServerToServer)this).RegisterNewClient(url, id);
-                
-                foreach(IMSDADServerToServer server in this.ServerURLs)
+
+                foreach (IMSDADServerToServer server in this.ServerURLs)
                 {
                     server.RegisterNewClient(url, id);
                 }
@@ -336,6 +354,7 @@ namespace MSDAD
 
             ServerState IMSDADServerToServer.RegisterNewServer(string url)
             {
+                Dictionary<String, Meeting> newDictionary;
                 //Impossible for a server to Register while a Meeting is being closed 
                 //To ensure that a new server always gets the meeting closed if it is being closed when it joins
                 lock (this.Meetings)
@@ -350,13 +369,16 @@ namespace MSDAD
                         System.Console.WriteLine("Cannot connect to server at address {0}", url);
                     }
 
+
+                    newDictionary = this.Meetings.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 }
-                return new ServerState(ClientURLs, this.Meetings);
+                return new ServerState(ClientURLs, newDictionary);
             }
 
             void IMSDADServerToServer.RegisterNewClient(string url, string id)
             {
-                lock (ClientURLs) {
+                lock (ClientURLs)
+                {
                     this.ClientURLs.Add(new ServerClient(url, id));
                 }
             }
@@ -370,8 +392,12 @@ namespace MSDAD
             {
                 lock (CreateMeetingLock)
                 {
-                    Meetings.Add(topic, meeting);
-                    Console.WriteLine(meeting.ToString());
+                    if(!Meetings.TryAdd(topic, meeting))
+                    {
+                        Meetings[topic] = Meetings[topic].MergeMeeting(meeting);
+                    }
+                    
+
                 }
             }
 
