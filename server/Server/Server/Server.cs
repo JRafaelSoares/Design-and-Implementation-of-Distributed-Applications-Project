@@ -123,7 +123,7 @@ namespace MSDAD
                             {
                                 this.Meetings.TryAdd(meeting.Topic, meeting);
                             }
-                            else if (this.Meetings[meeting.Topic].CurState == Meeting.State.Open && meeting.CurState != Meeting.State.Open)
+                            else if (this.Meetings[meeting.Topic].CurState < meeting.CurState)
                             {
                                 this.Meetings[meeting.Topic] = meeting;
                             }
@@ -168,16 +168,19 @@ namespace MSDAD
 
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
-                SafeSleep();
                 lock (CreateMeetingLock)
                 {
+                    SafeSleep();
                     Meetings.TryAdd(topic, meeting);
                 }
 
+                //Propagate Meeting to Other Servers
                 foreach (IMSDADServerToServer server in ServerURLs)
                 {
                     server.CreateMeeting(topic, meeting);
                 }
+
+                //Give Client URLS of other clients
                 if (meeting.GetType() == typeof(MeetingInvitees))
                 {
                     MeetingInvitees invRef = (MeetingInvitees)meeting;
@@ -200,6 +203,7 @@ namespace MSDAD
 
             void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
+                //See if Meeting as reached the server yet
                 SafeSleep();
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
@@ -212,6 +216,7 @@ namespace MSDAD
                     throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
+                //Join Client to Meeting
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
 
@@ -239,6 +244,7 @@ namespace MSDAD
                 {
                     bool found = this.Meetings.TryGetValue(key, out Meeting myMeeting);
 
+                    //If a client has a meeting I don't know about get that meeting
                     if (!found)
                     {
 
@@ -246,6 +252,8 @@ namespace MSDAD
                     }
                     else
                     {
+                        //Merge meeting on the server and give the merged meeting to the client as well
+
                         lock (Meetings.Keys.FirstOrDefault(k => k.Equals(key)))
                         {
                             Meeting upToDate = myMeeting.MergeMeeting(meetings[key]);
@@ -254,17 +262,16 @@ namespace MSDAD
                         }
                     }
                 }
-
                 return meetings;
             }
 
             void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
-                //Lock other threads from closing any other Meetings
+                //Lock other threads from closing any Meetings
                 lock (CloseMeetingLock)
                 {
                     Meetings[topic] = meeting;
-                    //Lock other threads from joining this meeting
+                    //Lock other threads from joining or updating this meeting
                     lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                     {
 
@@ -304,6 +311,8 @@ namespace MSDAD
             {
                 Object objLock = new Object();
                 CountdownEvent latch = new CountdownEvent(this.ServerURLs.Count);
+
+                //Propagate the closed meeting to all the servers and await for all responses
                 foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                 {
                     MergeMeetingDelegate RemoteDel = new MergeMeetingDelegate(otherServer.MergeClosedMeeting);
@@ -326,12 +335,14 @@ namespace MSDAD
             {
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
+                    //Update Meeting and book room if Meeting was closed
                     Meetings[topic] = meeting;
                     meeting.BookClosedMeeting();
                 }
             }
             void IMSDADServerPuppet.AddRoom(String location, uint capacity, String roomName)
             {
+                //Block Other threads from Adding Rooms as well
                 lock (Location.Locations)
                 {
                     Location local = Location.FromName(location);
@@ -357,7 +368,6 @@ namespace MSDAD
             }
             void IMSDADServerPuppet.Status()
             {
-
                 foreach (IMSDADServerToServer server in ServerURLs)
                 {
                     try
@@ -375,7 +385,6 @@ namespace MSDAD
             String IMSDADServerToServer.Ping()
             {
                 return this.SeverId;
-
             }
 
             void IMSDADServer.NewClient(string url, string id)
@@ -405,7 +414,7 @@ namespace MSDAD
                 Dictionary<String, Meeting> newDictionary;
                 //Impossible for a server to Register while a Meeting is being closed 
                 //To ensure that a new server always gets the meeting closed if it is being closed when it joins
-                lock (this.Meetings)
+                lock (CloseMeetingLock)
                 {
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
                     if (otherServer != null)
@@ -416,7 +425,6 @@ namespace MSDAD
                     {
                         System.Console.WriteLine("Cannot connect to server at address {0}", url);
                     }
-
 
                     newDictionary = this.Meetings.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 }
@@ -442,14 +450,14 @@ namespace MSDAD
                 {
                     if (!Meetings.TryAdd(topic, meeting))
                     {
+                        //Meeting already exists, must Merge meetings
                         Meetings[topic] = Meetings[topic].MergeMeeting(meeting);
                     }
-
-
                 }
             }
             Meeting IMSDADServerToServer.LockMeeting(string topic)
             {
+                //Lock meeting as fase one of closing a meeting
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
                     this.Meetings[topic].CurState = Meeting.State.Pending;
@@ -464,7 +472,10 @@ namespace MSDAD
                 {
                     Object objLock = new Object();
                     CountdownEvent latch = new CountdownEvent(this.ServerURLs.Count);
+                    //Lock users from joining local meeting
                     this.Meetings[topic].CurState = Meeting.State.Pending;
+
+                    //Lock users from joining a meeting on the other servers
                     foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                     {
                         RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(otherServer.LockMeeting);
@@ -482,14 +493,13 @@ namespace MSDAD
                     latch.Wait();
                     latch.Dispose();
 
+                    //Leader can now close Meeting
                     if (LeaderToken)
                     {
-                        //I Am Leader
                         ((IMSDADServerToServer)this).CloseMeeting(topic, this.Meetings[topic]);
                     }
                     else
                     {
-
                         IMSDADServerToServer leader = this.ServerURLs[0];
                         MergeMeetingDelegate del = new MergeMeetingDelegate(leader.CloseMeeting);
                         del.BeginInvoke(topic, this.Meetings[topic], null, null);
