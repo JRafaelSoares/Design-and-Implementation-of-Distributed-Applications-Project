@@ -76,7 +76,6 @@ namespace MSDAD
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
-                    System.Console.WriteLine(args[i]);
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
                     if (otherServer != null)
                     {
@@ -264,7 +263,6 @@ namespace MSDAD
                 //Lock other threads from closing any other Meetings
                 lock (CloseMeetingLock)
                 {
-                    System.Console.WriteLine("I AM LEADER");
                     Meetings[topic] = meeting;
                     //Lock other threads from joining this meeting
                     lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
@@ -306,7 +304,6 @@ namespace MSDAD
             {
                 Object objLock = new Object();
                 CountdownEvent latch = new CountdownEvent(this.ServerURLs.Count);
-                Console.WriteLine("Propagate Decision");
                 foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                 {
                     MergeMeetingDelegate RemoteDel = new MergeMeetingDelegate(otherServer.MergeClosedMeeting);
@@ -323,14 +320,12 @@ namespace MSDAD
                 }
                 latch.Wait();
                 latch.Dispose();
-                Console.WriteLine("Decision Difused");
 
             }
             void IMSDADServerToServer.MergeClosedMeeting(string topic, Meeting meeting)
             {
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
-                    Console.WriteLine("Topic difused");
                     Meetings[topic] = meeting;
                     meeting.BookClosedMeeting();
                 }
@@ -457,7 +452,6 @@ namespace MSDAD
             {
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
-                    Console.WriteLine("Lock Meeting");
                     this.Meetings[topic].CurState = Meeting.State.Pending;
                     return Meetings[topic];
                 }
@@ -473,7 +467,6 @@ namespace MSDAD
                     this.Meetings[topic].CurState = Meeting.State.Pending;
                     foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                     {
-                        Console.WriteLine(String.Format("Server "));
                         RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(otherServer.LockMeeting);
                         AsyncCallback RemoteCallback = new AsyncCallback(ar =>
                         {
@@ -482,27 +475,21 @@ namespace MSDAD
                                 RemoteAsyncDelegate del = (RemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
                                 this.Meetings[topic] = this.Meetings[topic].MergeMeeting(del.EndInvoke(ar));
                                 latch.Signal();
-                                Console.WriteLine("Server response");
                             }
                         });
                         IAsyncResult RemAr = RemoteDel.BeginInvoke(topic, RemoteCallback, null);
                     }
                     latch.Wait();
                     latch.Dispose();
-                    Console.WriteLine("Everyone is Locked");
 
                     if (LeaderToken)
                     {
-
-                        Console.WriteLine("I AM LEADER");
                         //I Am Leader
-
                         ((IMSDADServerToServer)this).CloseMeeting(topic, this.Meetings[topic]);
                     }
                     else
                     {
 
-                        Console.WriteLine("Contact LEADER");
                         IMSDADServerToServer leader = this.ServerURLs[0];
                         MergeMeetingDelegate del = new MergeMeetingDelegate(leader.CloseMeeting);
                         del.BeginInvoke(topic, this.Meetings[topic], null, null);
