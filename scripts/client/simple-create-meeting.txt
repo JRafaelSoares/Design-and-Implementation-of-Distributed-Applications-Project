@@ -1,3 +1,5 @@
 list
 create ola 1 2 0 Lisboa,2020-01-02 Porto,2020-01-02
+join ola 1 Lisboa,2020-01-02
+list
 list

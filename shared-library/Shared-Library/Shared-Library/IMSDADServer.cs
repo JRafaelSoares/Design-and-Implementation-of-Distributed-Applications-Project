@@ -24,7 +24,7 @@ namespace MSDAD
 
             Dictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 
-            void CloseMeeting(String topic, String userId);
+            void ClientCloseMeeting(String topic, String userId);
 
         }
 
@@ -125,8 +125,11 @@ namespace MSDAD
             void RegisterNewClient(String url, String id);
 
             String Ping();
-
             void CreateMeeting(String topic, Meeting meeting);
+            void CloseMeeting(String topic, Meeting meeting);
+            void MergeClosedMeeting(String topic, Meeting meeting);
+            Meeting LockMeeting(String topic);
+
         }
 
         public interface IMSDADClientToClient

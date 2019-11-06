@@ -7,6 +7,8 @@ using System.Runtime.Remoting.Channels.Tcp;
 using System.Linq;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Runtime.Remoting.Messaging;
+
 namespace MSDAD
 {
     namespace Server
@@ -25,9 +27,17 @@ namespace MSDAD
 
             private readonly static WorkQueue workQueue = new WorkQueue();
 
+            private bool LeaderToken { get; set; }
+
             private static readonly Object CreateMeetingLock = new object();
 
+            private static readonly Object CloseMeetingLock = new object();
+
             private static readonly Random random = new Random();
+
+            public delegate Meeting RemoteAsyncDelegate(String topic);
+
+            public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
 
             //private static int ticket = 0;
             //private static int currentTicket = 0;
@@ -82,6 +92,12 @@ namespace MSDAD
 
                 }
 
+                //Means that it is the first server to be created
+                if (server.ServerURLs.Count == 0)
+                {
+                    server.LeaderToken = true;
+                }
+
                 //Create Locations
                 int j = i + 1;
                 for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
@@ -94,7 +110,7 @@ namespace MSDAD
                 System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
-                }
+            }
 
             void CalculateMeetingState(List<Dictionary<String, Meeting>> meetings)
             {
@@ -167,7 +183,8 @@ namespace MSDAD
                 {
                     MeetingInvitees invRef = (MeetingInvitees)meeting;
                     HashSet<ServerClient> invitees = new HashSet<ServerClient>();
-                    foreach (ServerClient client in ClientURLs) {
+                    foreach (ServerClient client in ClientURLs)
+                    {
                         if (invRef.Invitees.Contains(client.ClientId))
                         {
                             invitees.Add(client);
@@ -242,35 +259,24 @@ namespace MSDAD
                 return meetings;
             }
 
-            void IMSDADServer.CloseMeeting(String topic, String userId)
+            void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
-                SafeSleep();
-
-                bool found = Meetings.TryGetValue(topic, out Meeting meeting);
-
-                if ((!found) || meeting.CurState != Meeting.State.Open)
-                {
-                    throw new TopicDoesNotExistException("Topic " + topic + " cannot be closed\n");
-                }
                 //Lock other threads from closing any other Meetings
-                lock (this.Meetings)
+                lock (CloseMeetingLock)
                 {
+                    System.Console.WriteLine("I AM LEADER");
+                    Meetings[topic] = meeting;
                     //Lock other threads from joining this meeting
                     lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                     {
-                        if (meeting.CoordenatorID != userId)
-                        {
-                            throw new ClientNotCoordenatorException("Client " + userId + " is not this topic Coordenator.\n");
-                        }
-
 
                         List<Slot> slots = meeting.Slots.Where(x => x.GetNumUsers() >= meeting.MinParticipants).ToList();
-
 
                         if (slots.Count == 0)
                         {
                             meeting.CurState = Meeting.State.Canceled;
-                            throw new NoMeetingAvailableException("No slot meets the requirements. Meeting Canceled\n");
+                            PropagateClosedMeeting(topic, meeting);
+                            return;
                         }
 
                         slots.Sort((x, y) =>
@@ -291,11 +297,44 @@ namespace MSDAD
                         });
 
                         meeting.Close(slots[0], numUsers);
-
                     }
+                    PropagateClosedMeeting(topic, meeting);
                 }
             }
 
+            void PropagateClosedMeeting(String topic, Meeting meeting)
+            {
+                Object objLock = new Object();
+                CountdownEvent latch = new CountdownEvent(this.ServerURLs.Count);
+                Console.WriteLine("Propagate Decision");
+                foreach (IMSDADServerToServer otherServer in this.ServerURLs)
+                {
+                    MergeMeetingDelegate RemoteDel = new MergeMeetingDelegate(otherServer.MergeClosedMeeting);
+                    AsyncCallback RemoteCallback = new AsyncCallback(ar =>
+                    {
+                        lock (objLock)
+                        {
+                            MergeMeetingDelegate del = (MergeMeetingDelegate)((AsyncResult)ar).AsyncDelegate;
+                            del.EndInvoke(ar);
+                            latch.Signal();
+                        }
+                    });
+                    IAsyncResult RemAr = RemoteDel.BeginInvoke(topic, meeting, RemoteCallback, null);
+                }
+                latch.Wait();
+                latch.Dispose();
+                Console.WriteLine("Decision Difused");
+
+            }
+            void IMSDADServerToServer.MergeClosedMeeting(string topic, Meeting meeting)
+            {
+                lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
+                {
+                    Console.WriteLine("Topic difused");
+                    Meetings[topic] = meeting;
+                    meeting.BookClosedMeeting();
+                }
+            }
             void IMSDADServerPuppet.AddRoom(String location, uint capacity, String roomName)
             {
                 lock (Location.Locations)
@@ -414,7 +453,63 @@ namespace MSDAD
 
                 }
             }
+            Meeting IMSDADServerToServer.LockMeeting(string topic)
+            {
+                lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
+                {
+                    Console.WriteLine("Lock Meeting");
+                    this.Meetings[topic].CurState = Meeting.State.Pending;
+                    return Meetings[topic];
+                }
+            }
 
+            void IMSDADServer.ClientCloseMeeting(string topic, string userId)
+            {
+                SafeSleep();
+                lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
+                {
+                    Object objLock = new Object();
+                    CountdownEvent latch = new CountdownEvent(this.ServerURLs.Count);
+                    this.Meetings[topic].CurState = Meeting.State.Pending;
+                    foreach (IMSDADServerToServer otherServer in this.ServerURLs)
+                    {
+                        Console.WriteLine(String.Format("Server "));
+                        RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(otherServer.LockMeeting);
+                        AsyncCallback RemoteCallback = new AsyncCallback(ar =>
+                        {
+                            lock (objLock)
+                            {
+                                RemoteAsyncDelegate del = (RemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+                                this.Meetings[topic] = this.Meetings[topic].MergeMeeting(del.EndInvoke(ar));
+                                latch.Signal();
+                                Console.WriteLine("Server response");
+                            }
+                        });
+                        IAsyncResult RemAr = RemoteDel.BeginInvoke(topic, RemoteCallback, null);
+                    }
+                    latch.Wait();
+                    latch.Dispose();
+                    Console.WriteLine("Everyone is Locked");
+
+                    if (LeaderToken)
+                    {
+
+                        Console.WriteLine("I AM LEADER");
+                        //I Am Leader
+
+                        ((IMSDADServerToServer)this).CloseMeeting(topic, this.Meetings[topic]);
+                    }
+                    else
+                    {
+
+                        Console.WriteLine("Contact LEADER");
+                        IMSDADServerToServer leader = this.ServerURLs[0];
+                        MergeMeetingDelegate del = new MergeMeetingDelegate(leader.CloseMeeting);
+                        del.BeginInvoke(topic, this.Meetings[topic], null, null);
+                    }
+                }
+            }
         }
     }
 }
+

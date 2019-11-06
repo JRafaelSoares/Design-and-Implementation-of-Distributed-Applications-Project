@@ -23,6 +23,18 @@ namespace MSDAD
             {
                 return String.Format("({0},{1})", UserId.ToString(), Timestamp.ToString());
             }
+            public override bool Equals(object obj)
+            {
+                if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+                {
+                    return false;
+                }
+                else
+                {
+                    Join j = (Join)obj;
+                    return j.UserId == this.UserId;
+                }
+            }
         }
 
         [Serializable]
@@ -226,6 +238,15 @@ namespace MSDAD
                 Users.Add(new Join(UserId, timestamp));
             }
 
+            public void BookClosedMeeting()
+            {
+                if (this.CurState == State.Closed)
+                {
+                    Room bestRoom = this.Slots[0].Location.GetBestFittingRoomForCapacity(this.Slots[0].Date, (uint)this.Users.Count);
+                    bestRoom.AddBooking(this.Slots[0].Date);
+                }
+            }
+
             public void Close(Slot chosenSlot, uint numUsers)
             {
                 this.CurState = State.Closed;
@@ -246,19 +267,23 @@ namespace MSDAD
 
             public Meeting MergeMeeting(Meeting other)
             {
-                if (this.CurState > other.CurState)
+                if (this.CurState >= Meeting.State.Closed)
                 {
                     return this;
                 }
-                else if (this.CurState < other.CurState)
+                else if (other.CurState >= Meeting.State.Closed)
                 {
                     return other;
                 }
                 else
                 {
-                    if (this.CurState != State.Open)
+                    if (this.CurState > other.CurState)
                     {
                         return this;
+                    }
+                    else if (this.CurState < other.CurState)
+                    {
+                        return other;
                     }
                     else
                     {
