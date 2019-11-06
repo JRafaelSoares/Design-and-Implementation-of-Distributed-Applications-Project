@@ -1,3 +1,5 @@
 list
-create ola 1 2 1 Lisboa,2020-01-02 Porto,2020-01-02 c2
+create ola 1 2 0 Lisboa,2020-01-02 Porto,2020-01-02
+create ola2 1 2 0 Lisboa,2020-01-02 Porto,2020-01-02
+create ola3 1 2 0 Lisboa,2020-01-02 Porto,2020-01-02
 list

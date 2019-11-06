@@ -76,6 +76,7 @@ namespace MSDAD
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
+                    Console.WriteLine(args[i]);
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
                     if (otherServer != null)
                     {
@@ -132,7 +133,8 @@ namespace MSDAD
                 }
 
             }
-            //Leases never expire
+
+            //Client Leases never expire
             public override object InitializeLifetimeService()
             {
                 return null;
@@ -384,6 +386,7 @@ namespace MSDAD
 
             String IMSDADServerToServer.Ping()
             {
+                SafeSleep();
                 return this.SeverId;
             }
 
@@ -467,9 +470,9 @@ namespace MSDAD
 
             void IMSDADServer.ClientCloseMeeting(string topic, string userId)
             {
-                SafeSleep();
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
+                    SafeSleep();
                     Object objLock = new Object();
                     CountdownEvent latch = new CountdownEvent(this.ServerURLs.Count);
                     //Lock users from joining local meeting
