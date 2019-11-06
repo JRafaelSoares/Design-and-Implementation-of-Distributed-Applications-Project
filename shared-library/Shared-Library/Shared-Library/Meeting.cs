@@ -49,7 +49,7 @@ namespace MSDAD
 
             public virtual new string ToString()
             {
-                String s = String.Format("(Date:{0}, Location:{1})\nAtendees: ", Date.ToShortDateString(), Location);
+                String s = String.Format("(Date:{0}, Location:{1})\nAtendees: ", Date.ToShortDateString(), this.LocationString);
                 foreach (Join u in UserIds)
                 {
                     s += u.ToString() + " ";
@@ -108,7 +108,7 @@ namespace MSDAD
                 else
                 {
                     Slot s = (Slot)obj;
-                    return s.Date == this.Date && s.Location == this.Location;
+                    return s.Date == this.Date && s.LocationString == this.LocationString;
                 }
             }
         }
@@ -129,7 +129,7 @@ namespace MSDAD
 
             public virtual new string ToString()
             {
-                String s = String.Format("(Date:{0}, Location:{1}, Room: ({2}))\nAtendees: ", Date.ToShortDateString(), Location.ToString(), Room.ToString());
+                String s = String.Format("(Date:{0}, Location:{1}, Room: ({2}))\nAtendees: ", Date.ToShortDateString(), LocationString, Room.ToString());
                 foreach (Join u in UserIds)
                 {
                     s += u.ToString() + " ";
