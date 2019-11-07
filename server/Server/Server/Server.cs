@@ -76,7 +76,7 @@ namespace MSDAD
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
-                    Console.WriteLine(args[i]);
+
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
                     if (otherServer != null)
                     {
