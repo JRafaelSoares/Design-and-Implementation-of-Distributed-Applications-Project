@@ -20,7 +20,7 @@ Run the PCS.exe and the PuppetMaster.exe
 
 The PuppetMaster takes commands from a file or a command line
 
-The Shutdown button only works if you don't shutdown any of the servers or clients manuallu, otherwise it will block the puppet master
+The Shutdown button only works if you don't shutdown any of the servers or clients manually, otherwise it will block the puppet master
 
 Have fun
 
