@@ -6,11 +6,11 @@ Server: Console
 
 Shared-Library: Library
 
-Pupper-Master: Grphic Application
+Pupper-Master: Graphic Application
 
 PCS: Console
 
-##Running
+## Running
 
 Build PCS and PuppetMaster in Visual Studio
 
