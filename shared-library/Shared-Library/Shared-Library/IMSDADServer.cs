@@ -20,7 +20,7 @@ namespace MSDAD
 
             HashSet<ServerClient> CreateMeeting(string topic, Meeting meeting);
 
-            void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
             Dictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 

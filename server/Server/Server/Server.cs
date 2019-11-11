@@ -203,7 +203,7 @@ namespace MSDAD
             }
 
 
-            void IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
+            Meeting IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
                 //See if Meeting as reached the server yet
                 SafeSleep();
@@ -236,6 +236,7 @@ namespace MSDAD
                     }
                     meeting.AddUser(userId, timestamp);
                 }
+                return Meetings[topic];
             }
 
             Dictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
