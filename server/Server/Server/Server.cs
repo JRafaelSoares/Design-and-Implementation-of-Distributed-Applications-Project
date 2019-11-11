@@ -236,7 +236,7 @@ namespace MSDAD
                     }
                     meeting.AddUser(userId, timestamp);
                 }
-                return Meetings[topic];
+                return meeting;
             }
 
             Dictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
