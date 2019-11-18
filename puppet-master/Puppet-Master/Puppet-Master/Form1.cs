@@ -97,6 +97,8 @@ namespace Puppet_Master
 
         private void CreateClient(String[] clientUrl, String clientId, String serverUrl, String scriptName)
         {
+
+            safeSleep();
             String clientIp = clientUrl[0];
             IMSDADPCS pcs = (IMSDADPCS)Activator.GetObject(typeof(IMSDADPCS), "tcp://" + clientIp + ":10000/PCS");
             if (pcs != null)
