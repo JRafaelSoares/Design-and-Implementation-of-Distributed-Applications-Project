@@ -52,10 +52,13 @@ namespace MSDAD
             {
                 SafeSleep();
                 try
-                {
-                    Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
+                {   
+                    //Join meeting and update local meeting
+                    Meeting meeting =  Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
+                    this.Meetings[meeting.Topic] = meeting;
                 }
                 catch (NoSuchMeetingException) {
+                    // Server doesn't have the meeting yet, wait and try again later
                     Thread.Sleep(500);
                     JoinMeeting(topic, slots);
                 }
