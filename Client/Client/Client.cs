@@ -136,59 +136,74 @@ namespace MSDAD
 
             public void ParseScript(parseDelegate reader)
             {
-                String line;
-                while(( line = reader.Invoke() ) != null)
+                int state = 0;
+
+                //To run everything, press R
+                if (Console.ReadLine().Equals("R"))
                 {
-                    String[] items = line.Split(' ');
-                    switch(items[0])
-                    {
-                        case "list":
-                            this.ListMeetings();
-                            break;
-
-                        case "close":
-                            this.CloseMeeting(items[1]);
-                            break;
-
-                        case "join":
-                            List<String> slots = new List<string>();
-                            uint slotCount = UInt32.Parse(items[2]);
-                            for (uint i = 3; i < 3 + slotCount; ++i)
-                            {
-                                slots.Add(items[i]);
-                            }
-                            this.JoinMeeting(items[1], slots);
-                            break;
-
-                        case "create":
-                            int numSlots = Int32.Parse(items[3]);
-                            int numInvitees = Int32.Parse(items[4]);
-
-                            slots = new List<string>();
-                            HashSet<String> invitees =  numInvitees == 0 ?  null : new HashSet<string>();
-                            uint j;
-                            for (j = 5; j < 5 + numSlots; ++j)
-                            {
-                                slots.Add(items[j]);
-                            }
-                            for (; j < 5 + numSlots + numInvitees; ++j)
-                            {
-                                invitees.Add(items[j]);
-                            }
-                            this.CreateMeeting(items[1], UInt32.Parse(items[2]), slots, invitees);
-                            break;
-
-                        case "wait":
-                            this.Wait(Int32.Parse(items[1]));
-                            break;
-
-                        default:
-                            Console.WriteLine("Invalid command: {0}", items[0]);
-                            break;
-                    }
+                    state = 1;
                 }
 
+                String line;
+
+                while ((line = reader.Invoke()) != null)
+                {
+                    //To run each step, press Enter
+                    if (state == 1 || Console.ReadKey().Key.Equals(ConsoleKey.Enter))
+                    {
+                        Console.WriteLine(line);
+                        String[] items = line.Split(' ');
+                        switch(items[0])
+                        {
+                            case "list":
+                                this.ListMeetings();
+                                break;
+
+                            case "close":
+                                this.CloseMeeting(items[1]);
+                                break;
+
+                            case "join":
+                                List<String> slots = new List<string>();
+                                uint slotCount = UInt32.Parse(items[2]);
+                                for (uint i = 3; i < 3 + slotCount; ++i)
+                                {
+                                    slots.Add(items[i]);
+                                }
+                                this.JoinMeeting(items[1], slots);
+                                break;
+
+                            case "create":
+                                int numSlots = Int32.Parse(items[3]);
+                                int numInvitees = Int32.Parse(items[4]);
+
+                                slots = new List<string>();
+                                HashSet<String> invitees = numInvitees == 0 ? null : new HashSet<string>();
+                                uint j;
+                                for (j = 5; j < 5 + numSlots; ++j)
+                                {
+                                    slots.Add(items[j]);
+                                }
+                                for (; j < 5 + numSlots + numInvitees; ++j)
+                                {
+                                    invitees.Add(items[j]);
+                                }
+                                this.CreateMeeting(items[1], UInt32.Parse(items[2]), slots, invitees);
+                                break;
+
+                            case "wait":
+                                this.Wait(Int32.Parse(items[1]));
+                                break;
+
+                            default:
+                                Console.WriteLine("Invalid command: {0}", items[0]);
+                                break;
+                        }
+                    }
+                }
             }
+
+                //}
 
             void IMSDADClientToClient.CreateMeeting(String topic, Meeting meeting)
             {
@@ -219,7 +234,6 @@ namespace MSDAD
                 else
                 {
 
-
                     Client client = new Client(server, args[0]);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
@@ -228,10 +242,10 @@ namespace MSDAD
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
-                        StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory +  args[4]);
+                        StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory + args[4]);
+                        Console.WriteLine("Press R to run the entire script, or S to start run step by step. Enter Key to each step");
                         client.ParseScript(reader.ReadLine);
                         reader.Close();
-                       
                     }
                     else
                     {
