@@ -19,6 +19,8 @@ namespace Puppet_Master
         private TcpChannel channel;
         private OpenFileDialog FolderBrowser = new OpenFileDialog();
         public delegate void RemoteAsyncDelegate();
+        public delegate void RemoteAsyncAddRoomDelegate(String location, uint capacity, String name);
+
         private int timeToSleep = 0;
 
         public Form1()
@@ -44,7 +46,9 @@ namespace Puppet_Master
 
             foreach(IMSDADServerPuppet serverURL in this.Servers.Values)
             {
-                serverURL.AddRoom(location, capacity, name);   
+                RemoteAsyncAddRoomDelegate remDelegate = new RemoteAsyncAddRoomDelegate(serverURL.AddRoom);
+                remDelegate.BeginInvoke(location, capacity, name, null, null);
+                //serverURL.AddRoom(location, capacity, name);   
             }
         }
 
