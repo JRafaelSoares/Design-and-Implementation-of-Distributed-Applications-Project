@@ -129,6 +129,7 @@ namespace MSDAD
             void CloseMeeting(String topic, Meeting meeting);
             void MergeClosedMeeting(String topic, Meeting meeting);
             Meeting LockMeeting(String topic);
+            Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
         }
 

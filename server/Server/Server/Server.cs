@@ -37,6 +37,8 @@ namespace MSDAD
 
             public delegate Meeting RemoteAsyncDelegate(String topic);
 
+            public delegate Meeting JoinAsyncDelegate(String topic, List<string> slots, String userId, DateTime timestamp);
+
             public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
 
             //private static int ticket = 0;
@@ -203,7 +205,7 @@ namespace MSDAD
             }
 
 
-            Meeting IMSDADServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
+            Meeting IMSDADServerToServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
                 //See if Meeting as reached the server yet
                 SafeSleep();
@@ -236,7 +238,35 @@ namespace MSDAD
                     }
                     meeting.AddUser(userId, timestamp);
                 }
+
                 return meeting;
+            }
+
+
+            Meeting IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
+            {
+
+                CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
+                ((IMSDADServerToServer)this).JoinMeeting(topic, slots, userId, timestamp);
+
+                //Propagate the join and wait for maxFaults responses
+                foreach (IMSDADServerToServer otherServer in this.ServerURLs)
+                {
+                    JoinAsyncDelegate RemoteDel = new JoinAsyncDelegate(otherServer.JoinMeeting);
+                    AsyncCallback RemoteCallback = new AsyncCallback(ar =>
+                    {
+                        {
+                            JoinAsyncDelegate del = (JoinAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+                            del.EndInvoke(ar);
+                            latch.Signal();
+                        }
+                    });
+                    IAsyncResult RemAr = RemoteDel.BeginInvoke(topic, slots, userId, timestamp, RemoteCallback, null);
+                }
+                latch.Wait();
+                latch.Dispose();
+
+                return Meetings[topic];
             }
 
             Dictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
