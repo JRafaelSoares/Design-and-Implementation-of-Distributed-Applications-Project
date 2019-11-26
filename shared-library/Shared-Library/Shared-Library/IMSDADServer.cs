@@ -24,7 +24,7 @@ namespace MSDAD
 
             Dictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 
-            void ClientCloseMeeting(String topic, String userId);
+            void CloseMeeting(String topic, String userId);
 
         }
 
@@ -109,21 +109,16 @@ namespace MSDAD
         {
             void AddRoom(String location, uint capacity, String roomName);
             void Status();
-
             void Crash();
-
             void Freeze();
-
             void Unfreeze();
-
             void ShutDown();
         }
 
         public interface IMSDADServerToServer
         {
-            ServerState RegisterNewServer(String url);
-            void RegisterNewClient(String url, String id);
-
+            void NewServer(String url);
+            void NewClient(String url, String id);
             String Ping();
             void CreateMeeting(String topic, Meeting meeting);
             void CloseMeeting(String topic, Meeting meeting);
@@ -143,18 +138,6 @@ namespace MSDAD
         public interface IMSDADClientPuppet
         {
             void ShutDown();
-        }
-    }
-
-    [Serializable]
-    public class ServerState
-    {
-        public HashSet<ServerClient> Clients { get; }
-        public Dictionary<String, Meeting> Meetings { get; }
-        public ServerState(HashSet<ServerClient> clients, Dictionary<String, Meeting> meetings)
-        {
-            this.Clients = clients;
-            this.Meetings = meetings;
         }
     }
 

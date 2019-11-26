@@ -74,7 +74,7 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {
-                    Server.ClientCloseMeeting(topic, this.UserId);
+                    Server.CloseMeeting(topic, this.UserId);
                 } catch(MSDAD.Shared.ServerException e)
                 {
                     Console.Write(e.GetErrorMessage());

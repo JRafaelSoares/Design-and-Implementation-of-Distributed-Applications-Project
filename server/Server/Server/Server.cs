@@ -18,14 +18,14 @@ namespace MSDAD
             private readonly ConcurrentDictionary<String, Meeting> Meetings = new ConcurrentDictionary<string, Meeting>();
 
             private readonly String SeverId;
-
+            
+            private readonly String ServerUrl;           
+            
             private readonly uint MaxFaults;
 
             private readonly int MinDelay;
 
             private readonly int MaxDelay;
-
-            private readonly static WorkQueue workQueue = new WorkQueue();
 
             private bool LeaderToken { get; set; }
 
@@ -41,18 +41,17 @@ namespace MSDAD
 
             public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
 
-            //private static int ticket = 0;
-            //private static int currentTicket = 0;
-
+            
             public List<IMSDADServerToServer> ServerURLs { get; } = new List<IMSDADServerToServer>();
             public HashSet<ServerClient> ClientURLs { get; } = new HashSet<ServerClient>();
 
-            public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay)
+            public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay, String ServerUrl)
             {
                 this.SeverId = ServerId;
                 this.MaxFaults = MaxFaults;
                 this.MinDelay = MinDelay;
                 this.MaxDelay = MaxDelay;
+                this.ServerUrl = ServerUrl;
 
             }
 
@@ -66,30 +65,35 @@ namespace MSDAD
                     System.Console.ReadLine();
                     return;
                 }
+                String ServerUrl = "tcp://" + args[0] + ":" + args[3] + "/" + args[2];
+                
+                Console.WriteLine(String.Format("Server with id {0} Initializing  with url {1}", args[1], ServerUrl));
 
                 //Initialize Server
                 TcpChannel channel = new TcpChannel(Int32.Parse(args[3]));
                 ChannelServices.RegisterChannel(channel, false);
-                Server server = new Server(args[1], UInt32.Parse(args[4]), Int32.Parse(args[5]), Int32.Parse(args[6]));
+                Server server = new Server(args[1], UInt32.Parse(args[4]), Int32.Parse(args[5]), Int32.Parse(args[6]), ServerUrl);
                 RemotingServices.Marshal(server, args[2], typeof(Server));
 
                 //Get Server URLS and connect to them
-                List<Dictionary<String, Meeting>> allMeetings = new List<Dictionary<String, Meeting>>();
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
                 {
+                    Console.WriteLine("Connecting to server with url {0}", args[i]);
 
                     IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), args[i]);
                     if (otherServer != null)
                     {
+                        //FIXME Review: we don't need Server State since all the servers are created on the beginning
+                        // of the system and none crashes while the system is setup
+                        Console.WriteLine(String.Format("Successfully connected to server with url {0} successfully", args[i]));
                         server.ServerURLs.Add(otherServer);
-                        ServerState state = otherServer.RegisterNewServer("tcp://" + args[0] + ":" + args[3] + "/" + args[2]);
-                        server.AddUsers(state.Clients);
-                        allMeetings.Add(state.Meetings);
+                        otherServer.NewServer(server.ServerUrl);
                     }
                     else
                     {
-                        System.Console.WriteLine("Cannot connect to server at address {0}", args[i]);
+                        //Should never happen
+                        Console.WriteLine(String.Format("Could not connect to server at address {0}", args[i]));
                     }
 
                 }
@@ -104,16 +108,18 @@ namespace MSDAD
                 int j = i + 1;
                 for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
                 {
+                    Console.WriteLine(String.Format("Adding room: {0} {1} {2}", args[i], args[i + 1], args[i + 2]));
                     ((IMSDADServerPuppet)server).AddRoom(args[i], UInt32.Parse(args[i + 1]), args[i + 2]);
                 }
 
-                server.CalculateMeetingState(allMeetings);
-
-                System.Console.WriteLine(String.Format("ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
+                
+                System.Console.WriteLine(String.Format("Setup successfull!\nip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
                 System.Console.WriteLine(" Press < enter > to shutdown server...");
                 System.Console.ReadLine();
             }
 
+            //FIXME Review if no longer necessary
+            /*
             void CalculateMeetingState(List<Dictionary<String, Meeting>> meetings)
             {
                 lock (Meetings)
@@ -134,7 +140,7 @@ namespace MSDAD
                     }
                 }
 
-            }
+            }*/
 
             //Client Leases never expire
             public override object InitializeLifetimeService()
@@ -142,24 +148,7 @@ namespace MSDAD
                 return null;
             }
 
-            /*void ServerCreateMeeting (string coordId, string topic, uint minParticipants, List<string> slots, HashSet<string> invitees)
-            {
-                /*int myTicket = Interlocked.Increment(ref ticket) -1 ;
-                while (myTicket != currentTicket)
-                {
-                    System.Threading.Thread.Sleep(250);
-                }
-                this.ServerCreateMeeting(coordId, topic, minParticipants, slots, invitees);
-                Interlocked.Increment(ref currentTicket);* / 
-
-                workQueue.AddWork(delegate ()
-                {
-                    this.ServerCreateMeeting(coordId, topic, minParticipants, slots, invitees);
-
-                });
-
-            }*/
-
+            
             private void SafeSleep()
             {
                 int mili = random.Next(MinDelay, MaxDelay);
@@ -172,19 +161,25 @@ namespace MSDAD
 
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
+                Console.WriteLine(String.Format("Create meeting with topic {0}", topic));
                 lock (CreateMeetingLock)
                 {
                     SafeSleep();
                     Meetings.TryAdd(topic, meeting);
                 }
 
+                Console.WriteLine(String.Format("meeting with topic {0} created successfully on this server", topic));
+                Console.WriteLine(String.Format("Broadcast meeting with topic {0} to other servers", topic));
+                
                 //Propagate Meeting to Other Servers
+                //FIXME Should Reliably Broadcast and Causally order with join
                 foreach (IMSDADServerToServer server in ServerURLs)
                 {
                     server.CreateMeeting(topic, meeting);
                 }
 
                 //Give Client URLS of other clients
+                //FIXME Should create meeting difusion algorithm here
                 if (meeting.GetType() == typeof(MeetingInvitees))
                 {
                     MeetingInvitees invRef = (MeetingInvitees)meeting;
@@ -207,16 +202,20 @@ namespace MSDAD
 
             Meeting IMSDADServerToServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
-                //See if Meeting as reached the server yet
                 SafeSleep();
+
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
+                //FIXME Join will be causal with create and as such this will never happen
                 if (!found)
                 {
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
+
+                //See if Meeting as reached the server yet
                 if (meeting.CurState != Meeting.State.Open)
                 {
+                    //FIXME Maybe just return since this is called by another server?
                     throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
@@ -245,11 +244,25 @@ namespace MSDAD
 
             Meeting IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
             {
+                SafeSleep();
+                Console.WriteLine(String.Format("User {0} wants to join meeting with topic {1}", userId, topic));
+                bool found = Meetings.TryGetValue(topic, out Meeting meeting);
+
+                //Meeting hasn't reached the server yet
+                if (!found)
+                {
+                    Console.WriteLine(String.Format("meeting with topic {0} hasn't reached this server yet, so user {1} must retry later", topic, userId));
+                    throw new NoSuchMeetingException("Meeting specified does not exist on this server");
+                }
 
                 CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
                 ((IMSDADServerToServer)this).JoinMeeting(topic, slots, userId, timestamp);
 
+                
+                Console.WriteLine(String.Format("propagate Join of user {0} to meeting with topic {1} to {2} servers ", userId, topic, this.MaxFaults));
+
                 //Propagate the join and wait for maxFaults responses
+                //FIXME Should be causal
                 foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                 {
                     JoinAsyncDelegate RemoteDel = new JoinAsyncDelegate(otherServer.JoinMeeting);
@@ -266,12 +279,14 @@ namespace MSDAD
                 latch.Wait();
                 latch.Dispose();
 
+                Console.WriteLine(String.Format("User {0} joined meeting with topic {1} finished", userId, topic));
+
                 return Meetings[topic];
             }
 
             Dictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
             {
-
+                //FIXME Should ask f servers for the state of the meetings given.
                 SafeSleep();
                 foreach (String key in meetings.Keys.ToList())
                 {
@@ -418,54 +433,23 @@ namespace MSDAD
             String IMSDADServerToServer.Ping()
             {
                 SafeSleep();
-                return this.SeverId;
+                return String.Format("Alive at url {0}. Id is {1}", this.ServerUrl, this.SeverId);
             }
 
             void IMSDADServer.NewClient(string url, string id)
             {
+                Console.WriteLine(String.Format("New client connecting: id {0} url {1}", id, url));
+                ((IMSDADServerToServer)this).NewClient(url, id);
 
-                ((IMSDADServerToServer)this).RegisterNewClient(url, id);
-
+                Console.WriteLine(String.Format("Broadcast new client: id {0} url {1}", id, url));
+                //FIXME Do Reliable Broadcast instead
                 foreach (IMSDADServerToServer server in this.ServerURLs)
                 {
-                    server.RegisterNewClient(url, id);
+                    server.NewClient(url, id);
                 }
             }
 
-            void AddUsers(HashSet<ServerClient> clients)
-            {
-                lock (this.ClientURLs)
-                {
-                    foreach (ServerClient client in clients)
-                    {
-                        this.ClientURLs.Add(client);
-                    }
-                }
-            }
-
-            ServerState IMSDADServerToServer.RegisterNewServer(string url)
-            {
-                Dictionary<String, Meeting> newDictionary;
-                //Impossible for a server to Register while a Meeting is being closed 
-                //To ensure that a new server always gets the meeting closed if it is being closed when it joins
-                lock (CloseMeetingLock)
-                {
-                    IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
-                    if (otherServer != null)
-                    {
-                        ServerURLs.Add(otherServer);
-                    }
-                    else
-                    {
-                        System.Console.WriteLine("Cannot connect to server at address {0}", url);
-                    }
-
-                    newDictionary = this.Meetings.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                }
-                return new ServerState(ClientURLs, newDictionary);
-            }
-
-            void IMSDADServerToServer.RegisterNewClient(string url, string id)
+            void IMSDADServerToServer.NewClient(string url, string id)
             {
                 lock (ClientURLs)
                 {
@@ -473,6 +457,21 @@ namespace MSDAD
                 }
             }
 
+            void IMSDADServerToServer.NewServer(string url)
+            {
+                System.Console.WriteLine("Trying to Connect to server at address {0}", url);
+                IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
+                    if (otherServer != null)
+                    {
+                        ServerURLs.Add(otherServer);
+                        System.Console.WriteLine("Successfully connected to server at address {0}", url);
+                    }
+                    else
+                    {
+                        System.Console.WriteLine("Cannot connect to server at address {0}", url);
+                    }
+            }
+            
             void IMSDADServerPuppet.ShutDown()
             {
                 Environment.Exit(1);
@@ -481,7 +480,8 @@ namespace MSDAD
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
                 lock (CreateMeetingLock)
-                {
+                {   
+                    //FIXME Is causal, not necessary
                     if (!Meetings.TryAdd(topic, meeting))
                     {
                         //Meeting already exists, must Merge meetings
@@ -499,8 +499,10 @@ namespace MSDAD
                 }
             }
 
-            void IMSDADServer.ClientCloseMeeting(string topic, string userId)
+            //FIXME Must change this
+            void IMSDADServer.CloseMeeting(string topic, string userId)
             {
+                Console.WriteLine(String.Format("Client with id {0} wants to close meeting with topic {1}", userId, topic));
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
                     SafeSleep();
