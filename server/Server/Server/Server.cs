@@ -35,12 +35,13 @@ namespace MSDAD
 
             private static readonly Random random = new Random();
 
+            public delegate ConcurrentDictionary<String, Meeting> ListAsyncDelegate();
+
             public delegate Meeting RemoteAsyncDelegate(String topic);
 
             public delegate Meeting JoinAsyncDelegate(String topic, List<string> slots, String userId, DateTime timestamp);
 
             public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
-
             
             public List<IMSDADServerToServer> ServerURLs { get; } = new List<IMSDADServerToServer>();
             public HashSet<ServerClient> ClientURLs { get; } = new HashSet<ServerClient>();
@@ -288,30 +289,31 @@ namespace MSDAD
             {
                 //FIXME Should ask f servers for the state of the meetings given.
                 SafeSleep();
-                foreach (String key in meetings.Keys.ToList())
+                ListMeetingsMerge(meetings);
+
+                CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
+
+                foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                 {
-                    bool found = this.Meetings.TryGetValue(key, out Meeting myMeeting);
-
-                    //If a client has a meeting I don't know about get that meeting
-                    if (!found)
+                    ListAsyncDelegate RemoteDel = new ListAsyncDelegate(otherServer.getMeetings);
+                    AsyncCallback RemoteCallback = new AsyncCallback(ar =>
                     {
-
-                        Meetings.TryAdd(key, meetings[key]);
-                    }
-                    else
-                    {
-                        //Merge meeting on the server and give the merged meeting to the client as well
-
-                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(key)))
                         {
-                            Meeting upToDate = myMeeting.MergeMeeting(meetings[key]);
-                            this.Meetings[key] = upToDate;
-                            meetings[key] = upToDate;
+                            ListAsyncDelegate del = (ListAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+                            ConcurrentDictionary<String, Meeting> serverMeeting = del.EndInvoke(ar);
+                            ListMeetingsMerge(serverMeeting);
+                            latch.Signal();
                         }
-                    }
+                    });
+                    IAsyncResult RemAr = RemoteDel.BeginInvoke(RemoteCallback, null);
                 }
+                latch.Wait();
+                latch.Dispose();
+
                 return meetings;
             }
+
+            
 
             void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
@@ -539,6 +541,38 @@ namespace MSDAD
                         IMSDADServerToServer leader = this.ServerURLs[0];
                         MergeMeetingDelegate del = new MergeMeetingDelegate(leader.CloseMeeting);
                         del.BeginInvoke(topic, this.Meetings[topic], null, null);
+                    }
+                }
+            }
+
+            ConcurrentDictionary<String, Meeting> IMSDADServerToServer.getMeetings()
+            {
+                return Meetings;
+            }
+
+            //Aux function to merge lists of meetingsmeetings
+            void ListMeetingsMerge(IDictionary<String, Meeting> meetings)
+            {
+                foreach (String key in meetings.Keys.ToList())
+                {
+                    bool found = this.Meetings.TryGetValue(key, out Meeting myMeeting);
+
+                    //If a client has a meeting I don't know about get that meeting
+                    if (!found)
+                    {
+                        Meetings.TryAdd(key, meetings[key]);
+                    }
+                    else
+                    {
+                        //Merge meeting on the server and give the merged meeting to the client as well
+
+                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(key)))
+                        {
+                            Meeting upToDate = myMeeting.MergeMeeting(meetings[key]);
+                            this.Meetings[key] = upToDate;
+                            //TODO Is this okay if its a list from a server
+                            meetings[key] = upToDate;
+                        }
                     }
                 }
             }
