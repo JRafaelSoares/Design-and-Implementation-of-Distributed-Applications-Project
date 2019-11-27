@@ -41,9 +41,13 @@ namespace MSDAD
 
             public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
 
+            public delegate void RBSendDelegate(String messageId, String operation, object[] args);
+            public ConcurrentDictionary<String, CountdownEvent> RBMessages = new ConcurrentDictionary<string, CountdownEvent>();
             
+            public int RBMessageCounter = 0;
+
             public List<IMSDADServerToServer> ServerURLs { get; } = new List<IMSDADServerToServer>();
-            public HashSet<ServerClient> ClientURLs { get; } = new HashSet<ServerClient>();
+            public ConcurrentDictionary<ServerClient, byte> ClientURLs { get; } = new ConcurrentDictionary<ServerClient, byte>();
 
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay, String ServerUrl)
             {
@@ -61,8 +65,8 @@ namespace MSDAD
                 if (args.Length < 9)
                 {
                     Console.WriteLine("<Usage> Server server_ip server_id network_name port max_faults min_delay max_delay num_servers server_urls numLocations locations");
-                    System.Console.WriteLine(" Press < enter > to shutdown server...");
-                    System.Console.ReadLine();
+                    Console.WriteLine(" Press < enter > to shutdown server...");
+                    Console.ReadLine();
                     return;
                 }
                 String ServerUrl = "tcp://" + args[0] + ":" + args[3] + "/" + args[2];
@@ -113,9 +117,9 @@ namespace MSDAD
                 }
 
                 
-                System.Console.WriteLine(String.Format("Setup successfull!\nip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
-                System.Console.WriteLine(" Press < enter > to shutdown server...");
-                System.Console.ReadLine();
+                Console.WriteLine(String.Format("Setup successfull!\nip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
+                Console.WriteLine(" Press < enter > to shutdown server...");
+                Console.ReadLine();
             }
 
             //FIXME Review if no longer necessary
@@ -161,42 +165,30 @@ namespace MSDAD
 
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
-                Console.WriteLine(String.Format("Create meeting with topic {0}", topic));
-                lock (CreateMeetingLock)
-                {
-                    SafeSleep();
-                    Meetings.TryAdd(topic, meeting);
-                }
-
-                Console.WriteLine(String.Format("meeting with topic {0} created successfully on this server", topic));
+                Console.WriteLine(String.Format("create meeting with topic {0} ", topic));
                 Console.WriteLine(String.Format("Broadcast meeting with topic {0} to other servers", topic));
                 
-                //Propagate Meeting to Other Servers
-                //FIXME Should Reliably Broadcast and Causally order with join
-                foreach (IMSDADServerToServer server in ServerURLs)
-                {
-                    server.CreateMeeting(topic, meeting);
-                }
+                //FIXME We should make it causally ordered
+                ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
+                
+                Console.WriteLine(String.Format("meeting with topic {0} broadcasted successfully", topic));
 
-                //Give Client URLS of other clients
+                return this.GetMeetingInvitees(this.Meetings[topic]);
+            }
+
+            HashSet<ServerClient> GetMeetingInvitees(Meeting meeting)
+            {
+                //Give Client URLS of other clients that can join
                 //FIXME Should create meeting difusion algorithm here
-                if (meeting.GetType() == typeof(MeetingInvitees))
+                HashSet<ServerClient> clients = new HashSet<ServerClient>();
+                foreach (ServerClient client in ClientURLs.Keys)
                 {
-                    MeetingInvitees invRef = (MeetingInvitees)meeting;
-                    HashSet<ServerClient> invitees = new HashSet<ServerClient>();
-                    foreach (ServerClient client in ClientURLs)
+                    if (meeting.CanJoin(client.ClientId))
                     {
-                        if (invRef.Invitees.Contains(client.ClientId))
-                        {
-                            invitees.Add(client);
-                        }
+                        clients.Add(client);
                     }
-                    return invitees;
                 }
-                else
-                {
-                    return ClientURLs;
-                }
+                return clients;
             }
 
 
@@ -262,7 +254,7 @@ namespace MSDAD
                 Console.WriteLine(String.Format("propagate Join of user {0} to meeting with topic {1} to {2} servers ", userId, topic, this.MaxFaults));
 
                 //Propagate the join and wait for maxFaults responses
-                //FIXME Should be causal
+                //FIXME Should be causal send Join Meeting
                 foreach (IMSDADServerToServer otherServer in this.ServerURLs)
                 {
                     JoinAsyncDelegate RemoteDel = new JoinAsyncDelegate(otherServer.JoinMeeting);
@@ -420,8 +412,8 @@ namespace MSDAD
                 {
                     try
                     {
-                        String id = server.Ping();
-                        Console.WriteLine(String.Format("Server {0} is alive", id));
+                        String ping = server.Ping();
+                        Console.WriteLine(ping);
                     }
                     catch (RemotingException)
                     {
@@ -438,37 +430,31 @@ namespace MSDAD
 
             void IMSDADServer.NewClient(string url, string id)
             {
-                Console.WriteLine(String.Format("New client connecting: id {0} url {1}", id, url));
-                ((IMSDADServerToServer)this).NewClient(url, id);
-
                 Console.WriteLine(String.Format("Broadcast new client: id {0} url {1}", id, url));
-                //FIXME Do Reliable Broadcast instead
-                foreach (IMSDADServerToServer server in this.ServerURLs)
-                {
-                    server.NewClient(url, id);
-                }
+                
+                ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "NewClient", new object[]{ url, id });
+                
+                Console.WriteLine(String.Format("New client connected: id {0} url {1}", id, url);
             }
 
             void IMSDADServerToServer.NewClient(string url, string id)
             {
-                lock (ClientURLs)
-                {
-                    this.ClientURLs.Add(new ServerClient(url, id));
-                }
+                this.ClientURLs.TryAdd(new ServerClient(url, id), new byte());
+                
             }
 
             void IMSDADServerToServer.NewServer(string url)
             {
-                System.Console.WriteLine("Trying to Connect to server at address {0}", url);
+                Console.WriteLine("Trying to Connect to server at address {0}", url);
                 IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
                     if (otherServer != null)
                     {
                         ServerURLs.Add(otherServer);
-                        System.Console.WriteLine("Successfully connected to server at address {0}", url);
+                        Console.WriteLine("Successfully connected to server at address {0}", url);
                     }
                     else
                     {
-                        System.Console.WriteLine("Cannot connect to server at address {0}", url);
+                        Console.WriteLine("Cannot connect to server at address {0}", url);
                     }
             }
             
@@ -479,16 +465,9 @@ namespace MSDAD
 
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
-                lock (CreateMeetingLock)
-                {   
-                    //FIXME Is causal, not necessary
-                    if (!Meetings.TryAdd(topic, meeting))
-                    {
-                        //Meeting already exists, must Merge meetings
-                        Meetings[topic] = Meetings[topic].MergeMeeting(meeting);
-                    }
-                }
+                Meetings.TryAdd(topic, meeting);
             }
+
             Meeting IMSDADServerToServer.LockMeeting(string topic)
             {
                 //Lock meeting as fase one of closing a meeting
@@ -540,6 +519,44 @@ namespace MSDAD
                         MergeMeetingDelegate del = new MergeMeetingDelegate(leader.CloseMeeting);
                         del.BeginInvoke(topic, this.Meetings[topic], null, null);
                     }
+                }
+            }
+
+            /***********************************************************************************************************************/ 
+            /**************************************Reliable Broadcast***************************************************************/
+            /***********************************************************************************************************************/
+             
+            private String RBNextMessageId()
+            {
+                return String.Format("{0}-{1}", this.SeverId, Interlocked.Increment(ref this.RBMessageCounter));
+            }
+
+            /// <summary>
+            /// Reliably Broadcast a Method, meaning that certainly if the method is executed then 
+            /// it will certainly be executed on all servers that are correct(i.e that do not crash)
+            /// Algorithm: If it is the first time this message is seen on this server then broadcast it to all and wait for f acknowledges
+            /// where f is the number of faults. When f servers received the message means that the message will never be lost on the system
+            /// </summary>
+            /// <param name="messageId"> unique id that identifies every message sent on the server </param>
+            /// <param name="operation"> the method to run on the server</param>
+            /// <param name="args"> arguments for the method to be ran</param>
+            /// FIXME: No way to get return type
+            void IMSDADServerToServer.RB_Send(string messageId, string operation, object[] args)
+            {
+                if (!RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
+                {
+                    foreach (IMSDADServerToServer server in this.ServerURLs)
+                    {
+                        RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
+                        IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
+                    }
+
+                    RBMessages[messageId].Wait();
+                    this.GetType().GetMethod(operation).Invoke(this, args);
+                }
+                else
+                {
+                    RBMessages[messageId].Signal();
                 }
             }
         }

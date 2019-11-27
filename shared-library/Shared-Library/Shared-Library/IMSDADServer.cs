@@ -126,6 +126,8 @@ namespace MSDAD
             Meeting LockMeeting(String topic);
             Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
+            void RB_Send(String messageId, String operation, Object[] args);
+            
         }
 
         public interface IMSDADClientToClient
