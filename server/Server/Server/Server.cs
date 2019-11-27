@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Collections.Concurrent;
 using System.Runtime.Remoting.Messaging;
+using System.Reflection;
 
 namespace MSDAD
 {
@@ -116,30 +117,6 @@ namespace MSDAD
                 Console.ReadLine();
             }
 
-            //FIXME Review if no longer necessary
-            /*
-            void CalculateMeetingState(List<Dictionary<String, Meeting>> meetings)
-            {
-                lock (Meetings)
-                {
-                    foreach (Dictionary<String, Meeting> meetingDict in meetings)
-                    {
-                        foreach (Meeting meeting in meetingDict.Values)
-                        {
-                            if (!this.Meetings.ContainsKey(meeting.Topic))
-                            {
-                                this.Meetings.TryAdd(meeting.Topic, meeting);
-                            }
-                            else if (this.Meetings[meeting.Topic].CurState < meeting.CurState)
-                            {
-                                this.Meetings[meeting.Topic] = meeting;
-                            }
-                        }
-                    }
-                }
-
-            }*/
-
             //Client Leases never expire
             public override object InitializeLifetimeService()
             {
@@ -159,12 +136,9 @@ namespace MSDAD
 
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
-                Console.WriteLine(String.Format("create meeting with topic {0} ", topic));
                 Console.WriteLine(String.Format("Broadcast meeting with topic {0} to other servers", topic));
-                
                 //FIXME We should make it causally ordered
                 ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
-                
                 Console.WriteLine(String.Format("meeting with topic {0} broadcasted successfully", topic));
 
                 return this.GetMeetingInvitees(this.Meetings[topic]);
@@ -419,7 +393,7 @@ namespace MSDAD
             String IMSDADServerToServer.Ping()
             {
                 SafeSleep();
-                return String.Format("Alive at url {0}. Id is {1}", this.ServerUrl, this.SeverId);
+                return String.Format("Server with id {1} is alive at url {0}", this.ServerUrl, this.SeverId);
             }
 
             void IMSDADServer.NewClient(string url, string id)
@@ -433,6 +407,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.NewClient(string url, string id)
             {
+                Console.WriteLine(String.Format("Client with id {0} and url {1} reached server {2}", id, url, this.SeverId));
                 this.ClientURLs.TryAdd(new ServerClient(url, id), new byte());
                 
             }
@@ -459,6 +434,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
+                Console.WriteLine(String.Format("Meeting with topic {0} reached server with id", topic, this.SeverId));
                 Meetings.TryAdd(topic, meeting);
             }
 
@@ -535,22 +511,30 @@ namespace MSDAD
             /// <param name="operation"> the method to run on the server</param>
             /// <param name="args"> arguments for the method to be ran</param>
             /// FIXME: No way to get return type
+            /// FIXME Perguntar se Max Faults nunca vai ser zero
             void IMSDADServerToServer.RB_Send(string messageId, string operation, object[] args)
             {
-                if (!RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
+                if (RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
                 {
+                    //First time seeing this message, rebroadcast and wait for F acks
                     foreach (IMSDADServerToServer server in this.ServerURLs)
                     {
                         RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
                         IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
                     }
-
                     RBMessages[messageId].Wait();
-                    this.GetType().GetMethod(operation).Invoke(this, args);
+                    GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
                 }
                 else
                 {
-                    RBMessages[messageId].Signal();
+                    //Already seen this message, ack
+                    lock (RBMessages[messageId])
+                    {
+                        if (!RBMessages[messageId].IsSet)
+                        {
+                            RBMessages[messageId].Signal();
+                        }
+                    }
                 }
             }
         }
