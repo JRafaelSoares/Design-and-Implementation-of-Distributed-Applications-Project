@@ -18,18 +18,12 @@ namespace MSDAD
             private readonly ConcurrentDictionary<String, Meeting> Meetings = new ConcurrentDictionary<string, Meeting>();
 
             private readonly String SeverId;
-            
-            private readonly String ServerUrl;           
-            
+            private readonly String ServerUrl;
             private readonly uint MaxFaults;
-
             private readonly int MinDelay;
-
             private readonly int MaxDelay;
 
             private bool LeaderToken { get; set; }
-
-            private static readonly Object CreateMeetingLock = new object();
 
             private static readonly Object CloseMeetingLock = new object();
 
@@ -38,12 +32,12 @@ namespace MSDAD
             public delegate Meeting RemoteAsyncDelegate(String topic);
 
             public delegate Meeting JoinAsyncDelegate(String topic, List<string> slots, String userId, DateTime timestamp);
-
+            
             public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
 
+            /*Properties for Reliable Broadcast*/
             public delegate void RBSendDelegate(String messageId, String operation, object[] args);
             public ConcurrentDictionary<String, CountdownEvent> RBMessages = new ConcurrentDictionary<string, CountdownEvent>();
-            
             public int RBMessageCounter = 0;
 
             public List<IMSDADServerToServer> ServerURLs { get; } = new List<IMSDADServerToServer>();
@@ -434,7 +428,7 @@ namespace MSDAD
                 
                 ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "NewClient", new object[]{ url, id });
                 
-                Console.WriteLine(String.Format("New client connected: id {0} url {1}", id, url);
+                Console.WriteLine(String.Format("New client connected: id {0} url {1}", id, url));
             }
 
             void IMSDADServerToServer.NewClient(string url, string id)
