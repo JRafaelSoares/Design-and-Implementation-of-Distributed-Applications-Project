@@ -187,6 +187,7 @@ namespace MSDAD
 
                     if (!meeting.CanJoin(userId))
                     {
+                        //FIXME Just return since clients are always correct
                         throw new CannotJoinMeetingException("User " + userId + " cannot join this meeting.\n");
                     }
 
@@ -199,10 +200,12 @@ namespace MSDAD
                     }
                     meeting.AddUser(userId, timestamp);
                 }
-
+                //FIXME maybe should be void
                 return meeting;
             }
 
+
+            //FIXME Maybe can have a more generic method to send something to F servers like we have for reliable broadcast
 
             Meeting IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
             {
@@ -231,15 +234,19 @@ namespace MSDAD
                     AsyncCallback RemoteCallback = new AsyncCallback(ar =>
                     {
                         {
-                            JoinAsyncDelegate del = (JoinAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-                            del.EndInvoke(ar);
-                            latch.Signal();
+                            if (latch.IsSet){
+
+                                JoinAsyncDelegate del = (JoinAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+                                del.EndInvoke(ar);
+                                latch.Signal();
+                            }
+                            
                         }
                     });
                     IAsyncResult RemAr = RemoteDel.BeginInvoke(topic, slots, userId, timestamp, RemoteCallback, null);
                 }
                 latch.Wait();
-                latch.Dispose();
+                //Cannot dispose latch because callback uses it
 
                 Console.WriteLine(String.Format("User {0} joined meeting with topic {1} finished", userId, topic));
 
@@ -260,17 +267,21 @@ namespace MSDAD
                     AsyncCallback RemoteCallback = new AsyncCallback(ar =>
                     {
                         {
-                            ListAsyncDelegate del = (ListAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-                            ConcurrentDictionary<String, Meeting> serverMeeting = del.EndInvoke(ar);
-                            ListMeetingsMerge(serverMeeting);
-                            latch.Signal();
+                            //Only merge meetings for f servers, then return
+                            if (latch.IsSet)
+                            {
+                                ListAsyncDelegate del = (ListAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+                                ConcurrentDictionary<String, Meeting> serverMeeting = del.EndInvoke(ar);
+                                ListMeetingsMerge(serverMeeting);
+                                latch.Signal();
+                            }
                         }
                     });
                     IAsyncResult RemAr = RemoteDel.BeginInvoke(RemoteCallback, null);
                 }
                 latch.Wait();
-                latch.Dispose();
-                
+                //Cannot dispose latch because callback uses it
+
                 return this.Meetings;
             }
 
@@ -501,7 +512,7 @@ namespace MSDAD
                 return Meetings;
             }
 
-            //Aux function to merge lists of meetingsmeetings
+            //Aux function to merge lists of meetings
             void ListMeetingsMerge(IDictionary<String, Meeting> meetings)
             {
                 foreach (String key in meetings.Keys.ToList())
