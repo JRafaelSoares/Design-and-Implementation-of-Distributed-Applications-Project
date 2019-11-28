@@ -495,10 +495,43 @@ namespace MSDAD
                 }
             }
 
-            /***********************************************************************************************************************/ 
-            /**************************************Reliable Broadcast***************************************************************/
+            //Aux functions for list meetings
+            ConcurrentDictionary<String, Meeting> IMSDADServerToServer.getMeetings()
+            {
+                return Meetings;
+            }
+
+            //Aux function to merge lists of meetingsmeetings
+            void ListMeetingsMerge(IDictionary<String, Meeting> meetings)
+            {
+                foreach (String key in meetings.Keys.ToList())
+                {
+                    bool found = this.Meetings.TryGetValue(key, out Meeting myMeeting);
+
+                    //If a client has a meeting I don't know about get that meeting
+                    if (!found)
+                    {
+                        Meetings.TryAdd(key, meetings[key]);
+                    }
+                    else
+                    {
+                        //Merge meeting on the server and give the merged meeting to the client as well
+
+                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(key)))
+                        {
+                            Meeting upToDate = myMeeting.MergeMeeting(meetings[key]);
+                            this.Meetings[key] = upToDate;
+                            //TODO Is this okay if its a list from a server
+                            meetings[key] = upToDate;
+                        }
+                    }
+                }
+            }
+
             /***********************************************************************************************************************/
-             
+            /*************************************************Reliable Broadcast****************************************************/
+            /***********************************************************************************************************************/
+
             private String RBNextMessageId()
             {
                 return String.Format("{0}-{1}", this.SeverId, Interlocked.Increment(ref this.RBMessageCounter));
@@ -536,38 +569,6 @@ namespace MSDAD
                         if (!RBMessages[messageId].IsSet)
                         {
                             RBMessages[messageId].Signal();
-                        }
-                    }
-                }
-            }
-
-            ConcurrentDictionary<String, Meeting> IMSDADServerToServer.getMeetings()
-            {
-                return Meetings;
-            }
-
-            //Aux function to merge lists of meetingsmeetings
-            void ListMeetingsMerge(IDictionary<String, Meeting> meetings)
-            {
-                foreach (String key in meetings.Keys.ToList())
-                {
-                    bool found = this.Meetings.TryGetValue(key, out Meeting myMeeting);
-
-                    //If a client has a meeting I don't know about get that meeting
-                    if (!found)
-                    {
-                        Meetings.TryAdd(key, meetings[key]);
-                    }
-                    else
-                    {
-                        //Merge meeting on the server and give the merged meeting to the client as well
-
-                        lock (Meetings.Keys.FirstOrDefault(k => k.Equals(key)))
-                        {
-                            Meeting upToDate = myMeeting.MergeMeeting(meetings[key]);
-                            this.Meetings[key] = upToDate;
-                            //TODO Is this okay if its a list from a server
-                            meetings[key] = upToDate;
                         }
                     }
                 }
