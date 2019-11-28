@@ -35,7 +35,7 @@ namespace MSDAD
             {
                 SafeSleep();
 
-                Dictionary<String, Meeting> received = Server.ListMeetings(this.Meetings);
+                IDictionary<String, Meeting> received = Server.ListMeetings(this.Meetings);
                 foreach(Meeting recv in received.Values)
                 {
                     this.Meetings[recv.Topic] = recv;

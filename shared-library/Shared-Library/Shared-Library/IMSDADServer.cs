@@ -23,7 +23,7 @@ namespace MSDAD
 
             Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
-            Dictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
+            IDictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 
             void CloseMeeting(String topic, String userId);
 

@@ -285,7 +285,7 @@ namespace MSDAD
                 return Meetings[topic];
             }
 
-            Dictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
+            IDictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
             {
                 //FIXME Should ask f servers for the state of the meetings given.
                 SafeSleep();
@@ -309,8 +309,8 @@ namespace MSDAD
                 }
                 latch.Wait();
                 latch.Dispose();
-
-                return meetings;
+                
+                return this.Meetings;
             }
 
             
