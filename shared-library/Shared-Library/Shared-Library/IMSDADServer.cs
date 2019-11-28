@@ -1,5 +1,6 @@
 ﻿using MSDAD.Shared;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
@@ -22,7 +23,7 @@ namespace MSDAD
 
             Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
-            Dictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
+            IDictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 
             void CloseMeeting(String topic, String userId);
 
@@ -125,6 +126,7 @@ namespace MSDAD
             void MergeClosedMeeting(String topic, Meeting meeting);
             Meeting LockMeeting(String topic);
             Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            ConcurrentDictionary<String, Meeting> getMeetings();
 
             void RB_Send(String messageId, String operation, Object[] args);
             
