@@ -17,11 +17,11 @@ namespace MSDAD
 
         public interface IMSDADServer
         {
-            void NewClient(String url, String id);
+            Dictionary<String, String> NewClient(String url, String id);
 
             HashSet<ServerClient> CreateMeeting(string topic, Meeting meeting);
 
-            Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
             IDictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 
@@ -118,15 +118,15 @@ namespace MSDAD
 
         public interface IMSDADServerToServer
         {
-            void NewServer(String url);
-            void NewClient(String url, String id);
+            String NewServer(String id, String url);
+            void NewClient(ServerClient client);
             String Ping();
             void CreateMeeting(String topic, Meeting meeting);
             void CloseMeeting(String topic, Meeting meeting);
             void MergeClosedMeeting(String topic, Meeting meeting);
             Meeting LockMeeting(String topic);
-            Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
-            ConcurrentDictionary<String, Meeting> getMeetings();
+            void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            ConcurrentDictionary<String, Meeting> GetMeetings();
 
             void RB_Send(String messageId, String operation, Object[] args);
             
