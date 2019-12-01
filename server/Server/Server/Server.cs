@@ -1,5 +1,6 @@
 ﻿using MSDAD.Shared;
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
@@ -17,7 +18,7 @@ namespace MSDAD
         {
 
             /*System members*/
-            private readonly ConcurrentDictionary<String, IMSDADServerToServer> ServerView = new ConcurrentDictionary<String, IMSDADServerToServer>();
+            private ConcurrentDictionary<String, IMSDADServerToServer> ServerView = new ConcurrentDictionary<String, IMSDADServerToServer>();
             private readonly ConcurrentDictionary<String, String> ServerNames = new ConcurrentDictionary<String, String>();
 
             private readonly ConcurrentDictionary<ServerClient, byte> ClientURLs = new ConcurrentDictionary<ServerClient, byte>();
@@ -49,6 +50,12 @@ namespace MSDAD
             public int RBMessageCounter = 0;
             /***********************************/
 
+            /* Properties for Fault Detection */
+            private readonly int maxFailures = 3;
+            private readonly TimeSpan timeout = TimeSpan.FromMilliseconds(3000);
+            private ConcurrentDictionary<IMSDADServerToServer, int> CountFails = new ConcurrentDictionary<IMSDADServerToServer, int>();
+
+            /**********************************/
 
             
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay, String ServerUrl)
@@ -121,8 +128,16 @@ namespace MSDAD
                 Console.WriteLine(String.Format("[SETUP] Setup successfull!\n[SETUP] [FINISH] ip: {0} ServerId: {1} network_name: {2} port: {3} max faults: {4} min delay: {5} max delay: {6}", args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
                 Console.WriteLine("[SHUTDOWN] Press < enter > to shutdown server...");
                 Console.ReadLine();
-            }
 
+                //Start Failure Detector
+                foreach (IMSDADServerToServer otherServer in server.ServerView.Values)
+                {
+                    server.CountFails.TryAdd(otherServer, 0);
+                }
+
+                var failureDet = Task.Run(() => server.FailureDetector(server.maxFailures, server.ServerView, server.timeout));
+
+            }
 
             //Client Leases never expire
             public override object InitializeLifetimeService()
@@ -579,6 +594,43 @@ namespace MSDAD
                 }
             }
 
+            /***********************************************************************************************************************/
+            /*************************************************Failure Detector******************************************************/
+            /***********************************************************************************************************************/
+
+            //TODO Test when Crash function is done
+            public void FailureDetector(int maxFailures, ConcurrentDictionary<String, IMSDADServerToServer> serverView, TimeSpan timeout) 
+            {
+                while(true)
+                {
+                    foreach(IMSDADServerToServer otherServer in serverView.Values) 
+                    {
+                        var failureDecTask = Task.Run(() => { otherServer.Ping(); });
+
+                        //The ping is completed successfuly if it completes within the timeout time
+
+                        bool isCompletedSuccessfully = failureDecTask.Wait(timeout);
+
+                        //Otherwise, it failed
+
+                        if (!isCompletedSuccessfully) 
+                        {
+                            Console.WriteLine("Server" + otherServer.ToString() + "crashed");
+                            CountFails[otherServer] += 1;
+                        }
+
+                        //If a server fails maxFailures times, we assume it as dead 
+                        if (CountFails[otherServer] == maxFailures)
+                        {
+                            String serverKey = serverView.FirstOrDefault(x => x.Value.Equals(otherServer)).Key;
+                            IMSDADServerToServer failedServer = otherServer;
+                            serverView.TryRemove(serverKey, out failedServer);
+                        }        
+                    }
+                    Thread.Sleep(1000 * 60); //Each minute, it checks if each server is alive 
+                }
+            }
+            
             /***********************************************************************************************************************/
             /*************************************************Reliable Broadcast****************************************************/
             /***********************************************************************************************************************/
