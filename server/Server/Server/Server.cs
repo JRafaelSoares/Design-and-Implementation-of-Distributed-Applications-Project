@@ -146,7 +146,7 @@ namespace MSDAD
                 SafeSleep();
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [RELIABLE-BROADCAST] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
-                ((IMSDADServerToServer)this).RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
+                this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
@@ -436,7 +436,7 @@ namespace MSDAD
                 {
                     Console.WriteLine(String.Format("[INFO] [NEW-CLIENT] First time seeing client <id:{0} ; url:{1}>, will Broadcast", id, url));
                 
-                    ((IMSDADServerToServer)this).RB_Broadcast(RBNextMessageId(), "NewClient", new object[] { client });
+                    this.RB_Broadcast(RBNextMessageId(), "NewClient", new object[] { client });
                 }
                 else
                 {
@@ -590,7 +590,7 @@ namespace MSDAD
 
             //This method is called by someone who wants to broadcast (IE Doesn't need to sleep and 
             //knows that the message is new as it is the one he is sending
-            void IMSDADServerToServer.RB_Broadcast(string messageId, string operation, object[] args)
+            void RB_Broadcast(string messageId, string operation, object[] args)
             {
             
             RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults));    
@@ -603,7 +603,7 @@ namespace MSDAD
             GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);    
             }
 
-            //This method is called by Reliable Broadcast when a message is received from another server to broadcast (IE it needs to sleep)
+            //This method is called by Reliable Broadcast when a message is received from another server and then broadcast back (IE it needs to sleep)
             void IMSDADServerToServer.RB_Send(string messageId, string operation, object[] args)
             {
                 SafeSleep();
