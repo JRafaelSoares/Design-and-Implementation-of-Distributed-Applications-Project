@@ -203,8 +203,6 @@ namespace MSDAD
                 }
             }
 
-                //}
-
             void IMSDADClientToClient.CreateMeeting(String topic, Meeting meeting)
             {
                 lock (CreateMeetingLock)
