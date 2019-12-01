@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.Sockets;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
@@ -17,8 +15,12 @@ namespace MSDAD
 
         class Client : MarshalByRefObject, IMSDADClientToClient, IMSDADClientPuppet
         {
-            private readonly IMSDADServer Server;
-            private readonly String UserId;
+
+            private static readonly int WAIT_TIME = 3000;
+            
+            private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
+            private readonly IMSDADServer CurrentServer;
+            private readonly String ClientId;
             private int milliseconds;
             private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
             private static readonly Object CreateMeetingLock = new object();
@@ -26,25 +28,24 @@ namespace MSDAD
 
             public Client(IMSDADServer server, String userId)
             {
-                this.Server = server;
-                this.UserId = userId;
+                this.CurrentServer = server;
+                this.ClientId = userId;
                 this.milliseconds = 0;
             }
 
             private void ListMeetings()
             {
                 SafeSleep();
-
-                Dictionary<String, Meeting> received = Server.ListMeetings(this.Meetings);
-                foreach(Meeting recv in received.Values)
+                IDictionary<String, Meeting> receivedMeetings = CurrentServer.ListMeetings(this.Meetings);
+                foreach(Meeting meeting in receivedMeetings.Values)
                 {
-                    this.Meetings[recv.Topic] = recv;
+                    this.Meetings[meeting.Topic] = meeting;
 
                 }
 
-                foreach(Meeting recv in Meetings.Values)
+                foreach(Meeting meeting in Meetings.Values)
                 {
-                    Console.WriteLine(recv.ToString());
+                    Console.WriteLine(meeting.ToString());
                 }
             }
 
@@ -53,18 +54,21 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {   
-                    //Join meeting and update local meeting
-                    Meeting meeting =  Server.JoinMeeting(topic, slots, this.UserId, DateTime.Now);
-                    this.Meetings[meeting.Topic] = meeting;
+                    //Join meeting 
+                    CurrentServer.JoinMeeting(topic, slots, this.ClientId, DateTime.Now);
                 }
                 catch (NoSuchMeetingException) {
                     // Server doesn't have the meeting yet, wait and try again later
-                    Thread.Sleep(500);
+                    Thread.Sleep(WAIT_TIME);
                     JoinMeeting(topic, slots);
                 }
                 catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
+
+                }
+                catch (RemotingTimeoutException)
+                {
 
                 }
             }
@@ -74,7 +78,7 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {
-                    Server.ClientCloseMeeting(topic, this.UserId);
+                    CurrentServer.CloseMeeting(topic, this.ClientId);
                 } catch(MSDAD.Shared.ServerException e)
                 {
                     Console.Write(e.GetErrorMessage());
@@ -90,30 +94,27 @@ namespace MSDAD
 
                     if (invitees == null)
                     {
-                        meeting = new Meeting(this.UserId, topic, min_atendees, slots);
-                        Meetings.Add(topic, meeting);
-                    }
+                        meeting = new Meeting(this.ClientId, topic, min_atendees, slots);
+                        }
                     else
                     {
-                        meeting = new MeetingInvitees(this.UserId, topic, min_atendees, slots, invitees);
-                        Meetings.Add(topic, meeting);
+                        meeting = new MeetingInvitees(this.ClientId, topic, min_atendees, slots, invitees);
                     }
 
-                    HashSet<ServerClient> clients = Server.CreateMeeting(topic, meeting);
-
+                    //Propagate Meeting
+                    HashSet<ServerClient> clients = CurrentServer.CreateMeeting(topic, meeting);
+                    
                     foreach(ServerClient client in clients)
                     {
-                        if (client.ClientId != UserId)
+                        if (client.ClientId != ClientId)
                         {
                             IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
                             otherClient.CreateMeeting(topic, meeting);
                         }
                     }
-
-                } catch(CannotCreateMeetingException e)
-                {
-                    Console.WriteLine(e.GetErrorMessage());
-                } catch (LocationDoesNotExistException e)
+                    Meetings.Add(topic, meeting);
+                
+                }catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
                 }
@@ -134,15 +135,8 @@ namespace MSDAD
                 }
             }
 
-            public void ParseScript(parseDelegate reader)
+            public void ParseScript(parseDelegate reader, int state)
             {
-                int state = 0;
-
-                //To run everything, press R
-                if (Console.ReadLine().Equals("R"))
-                {
-                    state = 1;
-                }
 
                 String line;
 
@@ -236,20 +230,27 @@ namespace MSDAD
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
                     //Register Client with server
-                    server.NewClient("tcp://" + args[5] + ":" +  args[1] + "/" + args[2], args[0]);
+                    client.KnownServers = server.NewClient("tcp://" + args[5] + ":" +  args[1] + "/" + args[2], args[0]);
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
                         StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory + args[4]);
                         Console.WriteLine("Press R to run the entire script, or S to start run step by step. Enter Key to each step");
-                        client.ParseScript(reader.ReadLine);
+                        int state = 0;
+                        //To run everything, press R
+                        if (Console.ReadLine().Equals("R"))
+                        {
+                            state = 1;
+                        }
+
+                        client.ParseScript(reader.ReadLine, state);
                         reader.Close();
                     }
                     else
                     {
                         Console.WriteLine("Error: File provided does not exist");
                     }
-                    client.ParseScript(Console.ReadLine);
+                    client.ParseScript(Console.ReadLine, 1);
                 }
             }
 

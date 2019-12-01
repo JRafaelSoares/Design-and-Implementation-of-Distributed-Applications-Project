@@ -1,5 +1,6 @@
 ﻿using MSDAD.Shared;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
@@ -16,15 +17,15 @@ namespace MSDAD
 
         public interface IMSDADServer
         {
-            void NewClient(String url, String id);
+            Dictionary<String, String> NewClient(String url, String id);
 
             HashSet<ServerClient> CreateMeeting(string topic, Meeting meeting);
 
-            Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
 
-            Dictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
+            IDictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
 
-            void ClientCloseMeeting(String topic, String userId);
+            void CloseMeeting(String topic, String userId);
 
         }
 
@@ -109,27 +110,25 @@ namespace MSDAD
         {
             void AddRoom(String location, uint capacity, String roomName);
             void Status();
-
             void Crash();
-
             void Freeze();
-
             void Unfreeze();
-
             void ShutDown();
         }
 
         public interface IMSDADServerToServer
         {
-            ServerState RegisterNewServer(String url);
-            void RegisterNewClient(String url, String id);
-
-            String Ping();
+            String NewServer(String id, String url);
+            void NewClient(ServerClient client);
+            void Ping();
             void CreateMeeting(String topic, Meeting meeting);
             void CloseMeeting(String topic, Meeting meeting);
             void MergeClosedMeeting(String topic, Meeting meeting);
             Meeting LockMeeting(String topic);
-            Meeting JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
+            ConcurrentDictionary<String, Meeting> GetMeetings();
+
+            void RB_Send(String messageId, String operation, Object[] args);
 
         }
 
@@ -143,18 +142,6 @@ namespace MSDAD
         public interface IMSDADClientPuppet
         {
             void ShutDown();
-        }
-    }
-
-    [Serializable]
-    public class ServerState
-    {
-        public HashSet<ServerClient> Clients { get; }
-        public Dictionary<String, Meeting> Meetings { get; }
-        public ServerState(HashSet<ServerClient> clients, Dictionary<String, Meeting> meetings)
-        {
-            this.Clients = clients;
-            this.Meetings = meetings;
         }
     }
 

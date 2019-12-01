@@ -159,6 +159,7 @@ namespace MSDAD
             public uint MinParticipants { get; }
             public List<Slot> Slots { get; set; }
             public List<Join> Users;
+            public List<Join> UsersNotJoined { get; set; } = new List<Join>();
             public enum State { Open = 1, Pending = 2, Closed = 3, Canceled = 4 }
             public State CurState { get; set; }
 
@@ -218,6 +219,13 @@ namespace MSDAD
                     builder.Append(u.ToString() + "\n");
                 }
                 builder.Append(String.Format("State: {0}\n", this.CurState.ToString()));
+                
+                builder.Append("Users that did not fit:\n");
+                foreach (Join u in this.UsersNotJoined)
+                {
+                        builder.Append(u.ToString() + "\n");
+                }
+
                 return builder.ToString();
             }
 
@@ -258,6 +266,7 @@ namespace MSDAD
                 {
                     return x.Timestamp <= y.Timestamp ? -1 : 1;
                 });
+                this.UsersNotJoined = Users.GetRange((int)numUsers, Users.Count - (int)numUsers);
                 Users = Users.GetRange(0, (int)numUsers);
 
                 this.Slots = new List<Slot> { new ClosedSlot(chosenSlot, bestRoom, Users) };
