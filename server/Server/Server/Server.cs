@@ -146,7 +146,7 @@ namespace MSDAD
                 SafeSleep();
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [RELIABLE-BROADCAST] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
-                ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
+                ((IMSDADServerToServer)this).RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
@@ -169,8 +169,8 @@ namespace MSDAD
 
             void IMSDADServerToServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
-                Console.WriteLine(String.Format("[INFO] [JOIN-MEETING] Join of user {0} to meeting with topic {1} reached this server", userId, topic));
                 SafeSleep();
+                Console.WriteLine(String.Format("[INFO] [JOIN-MEETING] Join of user {0} to meeting with topic {1} reached this server", userId, topic));
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
                 //FIXME Join will be causal with create and as such this will never happen
@@ -213,8 +213,6 @@ namespace MSDAD
                 return;
             }
 
-
-            //FIXME Maybe can have a more generic method to send something to F servers like we have for reliable broadcast
 
             void IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
             {
@@ -305,6 +303,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
+                SafeSleep();
                 //Lock other threads from closing any Meetings
                 lock (CloseMeetingLock)
                 {
@@ -347,6 +346,7 @@ namespace MSDAD
 
             void PropagateClosedMeeting(String topic, Meeting meeting)
             {
+                SafeSleep();
                 Object objLock = new Object();
                 CountdownEvent latch = new CountdownEvent(this.ServerView.Count);
 
@@ -371,7 +371,8 @@ namespace MSDAD
             }
 
             void IMSDADServerToServer.MergeClosedMeeting(string topic, Meeting meeting)
-            {
+            { 
+                SafeSleep();
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
                     //Update Meeting and book room if Meeting was closed
@@ -411,29 +412,22 @@ namespace MSDAD
             }
             void IMSDADServerPuppet.Status()
             {
-                foreach (IMSDADServerToServer server in this.ServerView.Values)
+                foreach (KeyValuePair<String, String> server in this.ServerNames)
                 {
-                    try
-                    {
-                        String ping = server.Ping();
-                        Console.WriteLine(ping);
-                    }
-                    catch (RemotingException)
-                    {
-                        Console.WriteLine("[ERROR] [PING] Could not contact Server");
-                    }
+                    Console.WriteLine(String.Format("[STATUS] Server with id {0} is in the current view at url {1}", server.Key, server.Value));   
                 }
             }
 
-            String IMSDADServerToServer.Ping()
+            void IMSDADServerToServer.Ping()
             {
                 SafeSleep();
-                return String.Format("Server with id {1} is alive at url {0}", this.ServerUrl, this.ServerId);
+                return;
             }
 
 
             Dictionary<String,String> IMSDADServer.NewClient(string url, string id)
             {
+                SafeSleep();
                 Console.WriteLine("[INFO] [NEW-CLIENT] Received New Client connection request: client: <id:{0} ; url:{1}>", id, url);
             
                 ServerClient client = new ServerClient(url, id);
@@ -442,7 +436,7 @@ namespace MSDAD
                 {
                     Console.WriteLine(String.Format("[INFO] [NEW-CLIENT] First time seeing client <id:{0} ; url:{1}>, will Broadcast", id, url));
                 
-                    ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "NewClient", new object[] { client });
+                    ((IMSDADServerToServer)this).RB_Broadcast(RBNextMessageId(), "NewClient", new object[] { client });
                 }
                 else
                 {
@@ -457,6 +451,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.NewClient(ServerClient client)
             {
+                SafeSleep();
                 Console.WriteLine(String.Format("[INFO] [NEW-CLIENT] [RELIABLE-BROADCAST] Broadcast of client <id:{0} ; url:{1}> reached server {2}", client.ClientId, client.Url, this.ServerId));
                 this.ClientURLs.TryAdd(client, new byte());
                 Console.WriteLine(String.Format("[INFO] [NEW-CLIENT] [FINISH] Client <id:{0} ; url:{1}> added to server {2}", client.ClientId, client.Url, this.ServerId));
@@ -464,6 +459,7 @@ namespace MSDAD
 
             String IMSDADServerToServer.NewServer(String id, string url)
             {
+                SafeSleep();
                 Console.WriteLine("[INFO] [NEW-SERVER] Trying to Connect to server at address {0}", url);
                 IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
                 if (otherServer != null)
@@ -486,6 +482,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
+                SafeSleep();
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] Meeting with topic {0} reached server with id {1}", topic, this.ServerId));
                 Meetings.TryAdd(topic, meeting);
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [FINISH] Meeting with topic {0} added to server with id {1}", topic, this.ServerId));
@@ -494,6 +491,7 @@ namespace MSDAD
 
             Meeting IMSDADServerToServer.LockMeeting(string topic)
             {
+                SafeSleep();
                 //Lock meeting as fase one of closing a meeting
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
@@ -505,10 +503,10 @@ namespace MSDAD
             //FIXME Must change this
             void IMSDADServer.CloseMeeting(string topic, string userId)
             {
+                SafeSleep();
                 Console.WriteLine(String.Format("Client with id {0} wants to close meeting with topic {1}", userId, topic));
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
-                    SafeSleep();
                     Object objLock = new Object();
                     CountdownEvent latch = new CountdownEvent(this.ServerView.Count);
                     //Lock users from joining local meeting
@@ -549,6 +547,7 @@ namespace MSDAD
             //Aux functions for list meetings
             ConcurrentDictionary<String, Meeting> IMSDADServerToServer.GetMeetings()
             {
+                SafeSleep();
                 Console.WriteLine("[INFO] [LIST-MEETINGS] [FINISH] Got request to send my meetings");
                 return Meetings;
             }
@@ -589,17 +588,35 @@ namespace MSDAD
                 return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.RBMessageCounter));
             }
 
-            /// <summary>
-            /// Reliably Broadcast a Method, meaning that certainly if the method is executed then 
-            /// it will certainly be executed on all servers that are correct(i.e that do not crash)
-            /// Algorithm: If it is the first time this message is seen on this server then broadcast it to all and wait for f acknowledges
-            /// where f is the number of faults. When f servers received the message means that the message will never be lost on the system
-            /// </summary>
-            /// <param name="messageId"> unique id that identifies every message sent on the server </param>
-            /// <param name="operation"> the method to run on the server</param>
-            /// <param name="args"> arguments for the method to be ran</param>
+            void IMSDADServerToServer.RB_Broadcast(string messageId, string operation, object[] args)
+            {
+                if (RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
+                {
+                    //First time seeing this message, rebroadcast and wait for F acks
+                    foreach (IMSDADServerToServer server in this.ServerView.Values)
+                    {
+                        RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
+                        IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
+                    }
+                    RBMessages[messageId].Wait();
+                    GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
+                }
+                else
+                {
+                    //Already seen this message, ack
+                    lock (RBMessages[messageId])
+                    {
+                        if (!RBMessages[messageId].IsSet)
+                        {
+                            RBMessages[messageId].Signal();
+                        }
+                    }
+                }
+            }
+
             void IMSDADServerToServer.RB_Send(string messageId, string operation, object[] args)
             {
+                SafeSleep();
                 if (RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
                 {
                     //First time seeing this message, rebroadcast and wait for F acks

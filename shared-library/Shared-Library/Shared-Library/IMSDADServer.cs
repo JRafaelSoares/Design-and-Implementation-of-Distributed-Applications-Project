@@ -120,7 +120,7 @@ namespace MSDAD
         {
             String NewServer(String id, String url);
             void NewClient(ServerClient client);
-            String Ping();
+            void Ping();
             void CreateMeeting(String topic, Meeting meeting);
             void CloseMeeting(String topic, Meeting meeting);
             void MergeClosedMeeting(String topic, Meeting meeting);
@@ -128,8 +128,9 @@ namespace MSDAD
             void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
             ConcurrentDictionary<String, Meeting> GetMeetings();
 
+            void RB_Broadcast(String messageId, String operation, Object[] args);
             void RB_Send(String messageId, String operation, Object[] args);
-            
+
         }
 
         public interface IMSDADClientToClient
