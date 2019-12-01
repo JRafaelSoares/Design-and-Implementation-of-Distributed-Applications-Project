@@ -588,32 +588,22 @@ namespace MSDAD
                 return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.RBMessageCounter));
             }
 
+            //This method is called by someone who wants to broadcast (IE Doesn't need to sleep and 
+            //knows that the message is new as it is the one he is sending
             void IMSDADServerToServer.RB_Broadcast(string messageId, string operation, object[] args)
             {
-                if (RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
-                {
-                    //First time seeing this message, rebroadcast and wait for F acks
-                    foreach (IMSDADServerToServer server in this.ServerView.Values)
-                    {
-                        RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
-                        IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
-                    }
-                    RBMessages[messageId].Wait();
-                    GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
-                }
-                else
-                {
-                    //Already seen this message, ack
-                    lock (RBMessages[messageId])
-                    {
-                        if (!RBMessages[messageId].IsSet)
-                        {
-                            RBMessages[messageId].Signal();
-                        }
-                    }
-                }
+            
+            RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults));    
+            foreach (IMSDADServerToServer server in this.ServerView.Values)
+            {
+                RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
+                IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
+            }
+            RBMessages[messageId].Wait();
+            GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);    
             }
 
+            //This method is called by Reliable Broadcast when a message is received from another server to broadcast (IE it needs to sleep)
             void IMSDADServerToServer.RB_Send(string messageId, string operation, object[] args)
             {
                 SafeSleep();
