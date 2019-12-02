@@ -49,11 +49,8 @@ namespace MSDAD
             public int RBMessageCounter = 0;
             /***********************************/
 
-            /*Properties for Causal Order*/
-            private ConcurrentDictionary<String, int> VectorClock = new ConcurrentDictionary<string, int>();
-            /***********************************/
 
-
+            
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay, String ServerUrl)
             {
                 this.ServerId = ServerId;
@@ -149,8 +146,7 @@ namespace MSDAD
                 SafeSleep();
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [RELIABLE-BROADCAST] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
-                VectorClock[this.ServerId]++;
-                ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting, VectorClock });
+                ((IMSDADServerToServer)this).RB_Send(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
@@ -488,13 +484,12 @@ namespace MSDAD
                 Environment.Exit(1);
             }
 
-            void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting, ConcurrentDictionary<String, int> clock)
+            void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] Meeting with topic {0} reached server with id {1}", topic, this.ServerId));
-                //Update clock for newer version;
-                VectorClock[CheckClock(clock)]++;
                 Meetings.TryAdd(topic, meeting);
                 Console.WriteLine(String.Format("[INFO] [NEW-MEETING] [FINISH] Meeting with topic {0} added to server with id {1}", topic, this.ServerId));
+
             }
 
             Meeting IMSDADServerToServer.LockMeeting(string topic)
@@ -627,45 +622,6 @@ namespace MSDAD
                         }
                     }
                 }
-            }
-            /***********************************************************************************************************************/
-            /****************************************************Causal Order*******************************************************/
-            /***********************************************************************************************************************/
-
-            //It doesnt recognize if it implements from interface??
-            String CheckClock(ConcurrentDictionary<String, int> clock)
-            {
-                int clockDiference = 0, clockTime = 0;
-                String clockId = "";
-                foreach (String serverId in clock.Keys)
-                {
-                    clockDiference = VectorClock[serverId] - clock[serverId];
-                    if(clockDiference < 0)
-                    {
-                        clockTime += clockDiference;
-                        clockId = serverId;
-                    }
-                }
-
-                if(clockTime < -1)
-                {
-                    //Make it sleep or just call again right away?
-
-                    Thread.Sleep(100);
-                    return CheckClock(clock);
-;
-                }
-                else
-                {
-                    return clockId;
-                }
-            }
-
-            void Send_CausalOrder(String serverId, ConcurrentDictionary<String, int> VectorClock, string operation, object[] args)
-            {
-                VectorClock[ServerId]++;
-
-
             }
         }
     }
