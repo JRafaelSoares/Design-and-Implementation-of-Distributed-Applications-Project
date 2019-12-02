@@ -8,15 +8,23 @@ namespace MSDAD
     namespace Shared
     {
         [Serializable]
-        public class Join
+        public class Join : IComparable<Join>
         {
             public String UserId { get; }
             public DateTime Timestamp { get; }
+            public Tuple<String, uint> MessageNumber { get; }
+            public Dictionary<String, uint> VectorClock { get; }
 
             public Join(String userId, DateTime timestamp)
             {
                 this.UserId = userId;
                 this.Timestamp = timestamp;
+            }
+
+            public Join(String userId, DateTime timestamp, Tuple<String, uint> messageNumber, Dictionary<String, uint> vectorClock) : this(userId, timestamp)
+            {
+                this.MessageNumber = messageNumber;
+                this.VectorClock = vectorClock;
             }
 
             public override string ToString()
@@ -34,6 +42,12 @@ namespace MSDAD
                     Join j = (Join)obj;
                     return j.UserId == this.UserId;
                 }
+            }
+
+            public int CompareTo(Join other)
+            {
+                return this.VectorClock[other.MessageNumber.Item1] > other.MessageNumber.Item2 ? 1 : 0; 
+                
             }
         }
 
@@ -159,6 +173,7 @@ namespace MSDAD
             public uint MinParticipants { get; }
             public List<Slot> Slots { get; set; }
             public List<Join> Users;
+            public List<Join> UsersNotJoined { get; set; } = new List<Join>();
             public enum State { Open = 1, Pending = 2, Closed = 3, Canceled = 4 }
             public State CurState { get; set; }
 
@@ -218,6 +233,13 @@ namespace MSDAD
                     builder.Append(u.ToString() + "\n");
                 }
                 builder.Append(String.Format("State: {0}\n", this.CurState.ToString()));
+                
+                builder.Append("Users that did not fit:\n");
+                foreach (Join u in this.UsersNotJoined)
+                {
+                        builder.Append(u.ToString() + "\n");
+                }
+
                 return builder.ToString();
             }
 
@@ -254,10 +276,14 @@ namespace MSDAD
                 Room bestRoom = chosenSlot.Location.GetBestFittingRoomForCapacity(chosenSlot.Date, numUsers);
                 bestRoom.AddBooking(chosenSlot.Date);
 
+                //FIXME Use this when we are sending the Vector clocks!!!
+                //Users.Sort();
+
                 Users.Sort((x, y) =>
                 {
                     return x.Timestamp <= y.Timestamp ? -1 : 1;
                 });
+                this.UsersNotJoined = Users.GetRange((int)numUsers, Users.Count - (int)numUsers);
                 Users = Users.GetRange(0, (int)numUsers);
 
                 this.Slots = new List<Slot> { new ClosedSlot(chosenSlot, bestRoom, Users) };
