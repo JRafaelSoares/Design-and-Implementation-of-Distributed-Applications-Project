@@ -121,7 +121,7 @@ namespace MSDAD
             String NewServer(String id, String url);
             void NewClient(ServerClient client);
             String Ping();
-            void CreateMeeting(String topic, Meeting meeting);
+            void CreateMeeting(String topic, Meeting meeting, ConcurrentDictionary<String, int> clock);
             void CloseMeeting(String topic, Meeting meeting);
             void MergeClosedMeeting(String topic, Meeting meeting);
             Meeting LockMeeting(String topic);
