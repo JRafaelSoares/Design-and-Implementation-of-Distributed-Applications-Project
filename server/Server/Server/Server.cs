@@ -53,8 +53,11 @@ namespace MSDAD
 
             /* Properties for Fault Detection */
             private readonly int maxFailures = 3;
-            private readonly TimeSpan timeout;
+            private TimeSpan timeout { get {
+                    return TimeSpan.FromMilliseconds((MaxDelay * 2) + 1000);
+                } }
             private ConcurrentDictionary<String, int> CountFails = new ConcurrentDictionary<String, int>();
+            private ConcurrentDictionary<String, TimeSpan> Timeouts = new ConcurrentDictionary<String, TimeSpan>();
             /**********************************/
 
             private ConcurrentDictionary<String, int> VectorClock = new ConcurrentDictionary<string, int>();
@@ -69,7 +72,6 @@ namespace MSDAD
                 this.MaxDelay = MaxDelay;
                 this.ServerUrl = ServerUrl;
                 this.VectorClock.TryAdd(this.ServerId, 0);
-                this.timeout = TimeSpan.FromMilliseconds((MaxDelay * 2) + 1000);
             }
 
             static void Main(string[] args)
@@ -105,6 +107,8 @@ namespace MSDAD
                         // of the system and none crashes while the system is setup
                         Console.WriteLine(String.Format("[SETUP] Successfully connected to server with url {0} successfully", args[i]));
                         String id = otherServer.NewServer(server.ServerId, server.ServerUrl);
+                        server.CountFails.TryAdd(id, 0);
+                        server.Timeouts.TryAdd(id, server.timeout);
                         server.ServerView[id] =  otherServer;
                         server.ServerNames.TryAdd(id, args[i]);
                         server.VectorClock.TryAdd(id, 0);
@@ -494,6 +498,7 @@ namespace MSDAD
                 if (otherServer != null)
                 {
                     CountFails.TryAdd(id, 0);
+                    Timeouts.TryAdd(id, this.timeout);
                     ServerView.TryAdd(id, otherServer);
                     ServerNames.TryAdd(id, url);
                     VectorClock.TryAdd(id, 0);
@@ -613,44 +618,42 @@ namespace MSDAD
             /***********************************************************************************************************************/
             /*************************************************Failure Detector******************************************************/
             /***********************************************************************************************************************/
-
-            //FIXME (waitOne isn't what we thought it was) 
+ 
             public async void FailureDetector() 
             {
 
-                TimeSpan tempTimeout = timeout;
-
+                
                 while(true)
                 {
 
                     foreach(KeyValuePair <String, IMSDADServerToServer> pair in ServerView) 
                     {
-
                         Action<object> action = (object obj) => { pair.Value.Ping(); };
-
                         Task task = new Task(action, null);
                         task.Start(); 
 
-                        if (await Task.WhenAny(task, Task.Delay(tempTimeout)) != task) {
-                         
+                        if (await Task.WhenAny(task, Task.Delay(Timeouts[pair.Key])) != task) {
                             // timeout logic
                             CountFails[pair.Key] += 1;
-                            tempTimeout = TimeSpan.FromMilliseconds(tempTimeout.Milliseconds * 2);
-                        } else { 
+                            Timeouts[pair.Key] = TimeSpan.FromMilliseconds(Timeouts[pair.Key].TotalMilliseconds + 500);
+                            Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " did not ping back, happened {0} times, next timeout: {1} miliseconds", 
+                                                                                                CountFails[pair.Key], Timeouts[pair.Key].TotalMilliseconds);
 
+                        }
+                        else {
                             // task completed within timeout
                             CountFails[pair.Key] = 0;
+                            Timeouts[pair.Key] = timeout;
                         }
 
                         if (CountFails[pair.Key] == maxFailures)
                         {
-                            Console.WriteLine("Server " + pair.Key + " failed");
+                            Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " failed");
                             ServerView.TryRemove(pair.Key, out _);
-                            tempTimeout = timeout;
                         }
                         
                     }
-                    Thread.Sleep(1000 * 10); //Each minute, it checks if each server is alive 
+                    Thread.Sleep(1000 * 10);
                 }
             }
             
