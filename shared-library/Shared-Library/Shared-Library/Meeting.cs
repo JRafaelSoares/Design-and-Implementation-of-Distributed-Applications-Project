@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,8 +13,7 @@ namespace MSDAD
         {
             public String UserId { get; }
             public DateTime Timestamp { get; }
-            public Tuple<String, uint> MessageNumber { get; }
-            public Dictionary<String, uint> VectorClock { get; }
+            public ConcurrentDictionary<String, int> VectorClock { get; }
 
             public Join(String userId, DateTime timestamp)
             {
@@ -21,9 +21,8 @@ namespace MSDAD
                 this.Timestamp = timestamp;
             }
 
-            public Join(String userId, DateTime timestamp, Tuple<String, uint> messageNumber, Dictionary<String, uint> vectorClock) : this(userId, timestamp)
+            public Join(String userId, DateTime timestamp, ConcurrentDictionary<String, int> vectorClock) : this(userId, timestamp)
             {
-                this.MessageNumber = messageNumber;
                 this.VectorClock = vectorClock;
             }
 
@@ -46,7 +45,16 @@ namespace MSDAD
 
             public int CompareTo(Join other)
             {
-                return this.VectorClock[other.MessageNumber.Item1] > other.MessageNumber.Item2 ? 1 : 0; 
+                int totalClockValue = 0;
+                foreach(String key in this.VectorClock.Keys)
+                {
+                    totalClockValue += (int)(this.VectorClock[key] - other.VectorClock[key]);
+                    //Subtracts one clock to the other;
+                    //If only positives or 0, our join was after his, return 1;
+                    //If only negatives or 0, our join was before his, return -1;
+                    //Else concurrent
+                }
+                return totalClockValue; 
                 
             }
         }
@@ -83,9 +91,9 @@ namespace MSDAD
                 return s + "\n";
             }
 
-            public void AddUserId(String userId, DateTime timestamp)
+            public void AddUserId(String userId, DateTime timestamp, ConcurrentDictionary<String, int> vectorClock)
             {
-                UserIds.Add(new Join(userId, timestamp));
+                UserIds.Add(new Join(userId, timestamp, vectorClock));
             }
 
             public uint GetNumUsers()
@@ -255,9 +263,9 @@ namespace MSDAD
                 return Slots;
             }
 
-            public void AddUser(String UserId, DateTime timestamp)
+            public void AddUser(String UserId, DateTime timestamp, ConcurrentDictionary<String, int> vectorClock)
             {
-                Users.Add(new Join(UserId, timestamp));
+                Users.Add(new Join(UserId, timestamp, vectorClock));
             }
 
             public void BookClosedMeeting()
