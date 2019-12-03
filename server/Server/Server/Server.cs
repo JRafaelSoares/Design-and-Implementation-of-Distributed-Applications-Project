@@ -231,10 +231,10 @@ namespace MSDAD
                     foreach (Slot slot in meeting.Slots.Where(x => givenSlots.Contains(x)))
                     {
 
-                        slot.AddUserId(userId, timestamp);
+                        slot.AddUserId(userId, timestamp, this.VectorClock);
 
                     }
-                    meeting.AddUser(userId, timestamp);
+                    meeting.AddUser(userId, timestamp, this.VectorClock);
                 }
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][JOIN-MEETING][FINISH] user {0} joined meeting with topic {1}", userId, topic));
                 return;
