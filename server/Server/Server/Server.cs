@@ -709,17 +709,22 @@ namespace MSDAD
 
             void Send_CausalOrder(string operation, object[] args)
             {
-                this.VectorClock[this.ServerId]++;
-                RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { this.VectorClock, operation, args });
+                Dictionary<String, int> vec;
+                lock (this.VectorClock)
+                {
+                    this.VectorClock[this.ServerId]++;
+                    vec = new Dictionary<String, int>(this.VectorClock);
+                }
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Send message for operation {0} with clock {1}", operation, vec));
+                RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { vec, operation, args });
+                
             }
 
             void IMSDADServerToServer.Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args)
             {
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Received message for operation {0} with clock {1}", operation, clock));
                 SafeSleep();
-                //Shoould be infinite
-                CountdownEvent clockTimer = new CountdownEvent(1);
-                CausalWaits.Add(clockTimer);
-
+                
                 while (true)
                 { 
                     int clockDiference = 0;
@@ -734,30 +739,35 @@ namespace MSDAD
                             clockId = id;
                         }
                     }
-                    clockTimer.Reset();
-                    
+                    Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock diference for operation {0} is {1}", operation, clockDiference));
+
                     if (clockDiference < -1)
                     {
                         lock (CausalOrderLock)
                         {
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} (must be only 1)", operation));
                             Monitor.Wait(CausalOrderLock);
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} has been notified of changing of clocks, will recalculate diference", operation));
                         }
                     }
                     else
                     {
-                        //For the case he sends to itself
-                        if(clockDiference != 0)
+                        Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} can now be executed", operation));
+                        //For the case he sends to itself don't need to increment
+                        if (clockDiference != 0)
                         {
                             lock (CausalOrderLock)
                             {
                                 VectorClock[clockId]++;
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock has been updated, will notify all pending messages", operation));
                                 Monitor.PulseAll(CausalOrderLock);
+
                             }
                         }
                         break;
                     }
                 }
-                
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0}", operation));
                 GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
 
             }
