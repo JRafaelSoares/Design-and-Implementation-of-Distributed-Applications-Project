@@ -453,6 +453,11 @@ namespace MSDAD
                 return;
             }
 
+            void IMSDADServer.Ping()
+            {
+                SafeSleep();
+                return;
+            }
 
             Dictionary<String,String> IMSDADServer.NewClient(string url, string id)
             {
