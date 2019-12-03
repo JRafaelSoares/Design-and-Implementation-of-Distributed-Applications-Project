@@ -32,7 +32,7 @@ namespace MSDAD
                 this.CurrentServer = server;
                 this.ClientId = userId;
                 this.milliseconds = 0;
-                this.CurrentServerUrl = server_url;
+                this.CurrentServerUrl = serverUrl;
             }
 
             private void ListMeetings()

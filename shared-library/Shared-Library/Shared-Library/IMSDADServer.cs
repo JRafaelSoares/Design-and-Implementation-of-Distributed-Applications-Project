@@ -129,6 +129,7 @@ namespace MSDAD
             ConcurrentDictionary<String, Meeting> GetMeetings();
 
             void RB_Send(String messageId, String operation, Object[] args);
+            void Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args);
 
         }
 

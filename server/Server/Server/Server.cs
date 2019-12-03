@@ -57,7 +57,10 @@ namespace MSDAD
 
             /**********************************/
 
-            
+            private ConcurrentDictionary<String, int> VectorClock = new ConcurrentDictionary<string, int>();
+            private List<CountdownEvent> CausalWaits = new List<CountdownEvent>();
+            private static readonly Object CausalOrderLock = new object();
+
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay, String ServerUrl)
             {
                 this.ServerId = ServerId;
@@ -65,6 +68,7 @@ namespace MSDAD
                 this.MinDelay = MinDelay;
                 this.MaxDelay = MaxDelay;
                 this.ServerUrl = ServerUrl;
+                this.VectorClock.TryAdd(this.ServerId, 0);
             }
 
             static void Main(string[] args)
@@ -101,6 +105,7 @@ namespace MSDAD
                         Console.WriteLine(String.Format("[SETUP] Successfully connected to server with url {0} successfully", args[i]));
                         String id = otherServer.NewServer(server.ServerId, server.ServerUrl);
                         server.ServerView[id] =  otherServer;
+                        server.VectorClock.TryAdd(id, 0);
                     }
                     else
                     {
@@ -161,7 +166,8 @@ namespace MSDAD
                 SafeSleep();
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][RELIABLE-BROADCAST] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
-                this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
+                Send_CausalOrder("CreateMeeting", new object[] { topic, meeting });
+                //this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
@@ -481,6 +487,7 @@ namespace MSDAD
                 {
                     ServerView.TryAdd(id, otherServer);
                     ServerNames.TryAdd(id, url);
+                    VectorClock.TryAdd(id, 0);
                     Console.WriteLine("[INFO][SERVER-TO-SERVER][NEW-SERVER][FINISH] Successfully connected to server at address {0}", url);
                 }
                 else
@@ -681,6 +688,59 @@ namespace MSDAD
                         }
                     }
                 }
+            }
+
+            void Send_CausalOrder(string operation, object[] args)
+            {
+                this.VectorClock[this.ServerId]++;
+                RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { this.VectorClock, operation, args });
+            }
+
+            void IMSDADServerToServer.Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args)
+            {
+                //Shoould be infinite
+                CountdownEvent clockTimer = new CountdownEvent(1);
+                CausalWaits.Add(clockTimer);
+
+                while (true)
+                { 
+                    int clockDiference = 0;
+                    string clockId = "";
+
+                    foreach (String id in VectorClock.Keys)
+                    {
+                        if (VectorClock[id] < clock[id])
+                        {
+                            clockDiference += VectorClock[id] - clock[id];
+                            clockId = id;
+                        }
+                    }
+                    clockTimer.Reset();
+                    
+                    if (clockDiference < -1)
+                    {
+                        lock (CausalOrderLock)
+                        {
+                            Monitor.Wait(CausalOrderLock);
+                        }
+                    }
+                    else
+                    {
+                        //For the case he sends to itself
+                        if(clockDiference != 0)
+                        {
+                            lock (CausalOrderLock)
+                            {
+                                VectorClock[clockId]++;
+                                Monitor.PulseAll(CausalOrderLock);
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
+
             }
         }
     }
