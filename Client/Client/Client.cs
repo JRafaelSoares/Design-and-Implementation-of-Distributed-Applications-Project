@@ -56,9 +56,14 @@ namespace MSDAD
                         Console.WriteLine(meeting.ToString());
                     }
 
-                } catch (RemotingTimeoutException) {
+                }
+                catch (System.Net.Sockets.SocketException e)
+                {
                     ReconnectingClient();
                 }
+                catch (RemotingTimeoutException) {
+                    ReconnectingClient();
+                } 
 
             }
 
@@ -80,10 +85,14 @@ namespace MSDAD
                     Console.WriteLine(e.GetErrorMessage());
 
                 }
-                catch (RemotingTimeoutException)
+                catch (System.Net.Sockets.SocketException e)
                 {
                     ReconnectingClient();
                 }
+                catch (RemotingTimeoutException)
+                {
+                    ReconnectingClient();
+                } 
             }
 
              private void CloseMeeting(String topic)
@@ -92,12 +101,20 @@ namespace MSDAD
                 try
                 {
                     CurrentServer.CloseMeeting(topic, this.ClientId);
-                } catch(MSDAD.Shared.ServerException e)
+                }
+                catch (MSDAD.Shared.ServerException e)
                 {
                     Console.Write(e.GetErrorMessage());
-                } catch (RemotingTimeoutException) {
+                }
+                catch (System.Net.Sockets.SocketException e)
+                {
                     ReconnectingClient();
                 }
+                catch (RemotingTimeoutException)
+                {
+                    ReconnectingClient();
+                }
+
             }
 
             private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)
@@ -132,14 +149,14 @@ namespace MSDAD
                 } catch (System.Net.Sockets.SocketException e)
                 {
                     ReconnectingClient();
-                }
+                } 
                 catch (RemotingTimeoutException) {
                     ReconnectingClient();
                 }
                 catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
-                }
+                } 
             }
 
             private void Wait(int milliseconds)
