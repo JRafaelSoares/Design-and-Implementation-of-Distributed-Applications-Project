@@ -232,6 +232,7 @@ namespace MSDAD
                     //Register Client with server
                     client.KnownServers = server.NewClient("tcp://" + args[5] + ":" +  args[1] + "/" + args[2], args[0]);
 
+
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
                         StreamReader reader = File.OpenText(AppDomain.CurrentDomain.BaseDirectory + args[4]);
