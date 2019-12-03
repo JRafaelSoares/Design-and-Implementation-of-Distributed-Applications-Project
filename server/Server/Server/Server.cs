@@ -609,6 +609,11 @@ namespace MSDAD
                     }
                 }
             }
+            String IMSDADServer.getRandomClient(String clientId)
+            {
+                KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
+                return t.Equals(null) ? t.Key.Url : null;
+            }
 
             /***********************************************************************************************************************/
             /*************************************************Failure Detector******************************************************/
@@ -782,6 +787,7 @@ namespace MSDAD
                 GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
 
             }
+
         }
     }
 }
