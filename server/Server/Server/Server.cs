@@ -53,9 +53,13 @@ namespace MSDAD
 
             /* Properties for Fault Detection */
             private readonly int maxFailures = 3;
-            private TimeSpan timeout { get {
+            private TimeSpan timeout
+            {
+                get
+                {
                     return TimeSpan.FromMilliseconds((MaxDelay * 2) + 1000);
-                } }
+                }
+            }
             private ConcurrentDictionary<String, int> CountFails = new ConcurrentDictionary<String, int>();
             private ConcurrentDictionary<String, TimeSpan> Timeouts = new ConcurrentDictionary<String, TimeSpan>();
             /**********************************/
@@ -85,7 +89,7 @@ namespace MSDAD
                     return;
                 }
                 String ServerUrl = "tcp://" + args[0] + ":" + args[3] + "/" + args[2];
-                
+
                 Console.WriteLine(String.Format("[SETUP] Server with id {0} Initializing  with url {1}", args[1], ServerUrl));
 
                 //Initialize Server
@@ -109,7 +113,7 @@ namespace MSDAD
                         String id = otherServer.NewServer(server.ServerId, server.ServerUrl);
                         server.CountFails.TryAdd(id, 0);
                         server.Timeouts.TryAdd(id, server.timeout);
-                        server.ServerView[id] =  otherServer;
+                        server.ServerView[id] = otherServer;
                         server.ServerNames.TryAdd(id, args[i]);
                         server.VectorClock.TryAdd(id, 0);
                         Console.WriteLine(String.Format("[SETUP] server with url {0} has id {1} and has been added to my view", args[i], id));
@@ -131,7 +135,7 @@ namespace MSDAD
 
                 //Create Locations
                 int j = i + 1;
-                
+
                 for (i = j; i < j + 3 * Int32.Parse(args[j - 1]); i += 3)
                 {
                     Console.WriteLine(String.Format("[SETUP] Adding room: {0} {1} {2}", args[i], args[i + 1], args[i + 2]));
@@ -160,7 +164,7 @@ namespace MSDAD
                 return null;
             }
 
-            
+
             private void SafeSleep()
             {
                 int mili = random.Next(MinDelay, MaxDelay);
@@ -224,7 +228,7 @@ namespace MSDAD
                 //Join Client to Meeting
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
-                    if(!meeting.CanJoin(userId))
+                    if (!meeting.CanJoin(userId))
                     {
                         //FIXME Just print error info since it should not happen
                         Console.WriteLine(String.Format("[ERROR][SERVER-TO-SERVER][JOIN-MEETING] Client {0} will join meeting with topic {1} without an invite", userId, topic));
@@ -261,11 +265,11 @@ namespace MSDAD
                 ((IMSDADServerToServer)this).JoinMeeting(topic, slots, userId, timestamp);
 
                 CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
-                
+
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][CAUSAL-SEND] Propagate join of user {0} to meeting with topic {1} to {2} servers", userId, topic, this.MaxFaults));
 
                 Send_CausalOrder("JoinMeeting", new object[] { topic, slots, userId, timestamp });
-                
+
                 //Propagate the join and wait for maxFaults responses
                 //FIXME Should be causal send Join Meeting
                 /*foreach (IMSDADServerToServer otherServer in this.ServerView.Values)
@@ -304,7 +308,7 @@ namespace MSDAD
 
                 CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS][QUERY] Will query {0} servers before return", this.MaxFaults));
-                
+
                 foreach (IMSDADServerToServer otherServer in this.ServerView.Values)
                 {
                     ListAsyncDelegate RemoteDel = new ListAsyncDelegate(otherServer.GetMeetings);
@@ -404,7 +408,7 @@ namespace MSDAD
             }
 
             void IMSDADServerToServer.MergeClosedMeeting(string topic, Meeting meeting)
-            { 
+            {
                 SafeSleep();
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
@@ -413,7 +417,7 @@ namespace MSDAD
                     meeting.BookClosedMeeting();
                 }
             }
-            
+
             void IMSDADServerPuppet.AddRoom(String location, uint capacity, String roomName)
             {
                 Console.WriteLine(String.Format("[INFO][SERVER-PUPPET][ADD-ROOM] Received new room: location {0}, room {1} capacity {2}", location, roomName, capacity));
@@ -447,7 +451,7 @@ namespace MSDAD
             {
                 foreach (KeyValuePair<String, String> server in this.ServerNames)
                 {
-                    Console.WriteLine(String.Format("[STATUS] Server with id {0} is in the current view at url {1}", server.Key, server.Value));   
+                    Console.WriteLine(String.Format("[STATUS] Server with id {0} is in the current view at url {1}", server.Key, server.Value));
                 }
             }
 
@@ -458,29 +462,29 @@ namespace MSDAD
             }
 
 
-            Dictionary<String,String> IMSDADServer.NewClient(string url, string id)
+            Dictionary<String, String> IMSDADServer.NewClient(string url, string id)
             {
                 SafeSleep();
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][NEW-CLIENT] Received New Client connection request: client: <id:{0} ; url:{1}>", id, url);
-            
+
                 ServerClient client = new ServerClient(url, id);
-                
+
                 if (!ClientURLs.ContainsKey(client))
                 {
                     Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT] First time seeing client <id:{0} ; url:{1}>, will Broadcast", id, url));
-                
+
                     this.RB_Broadcast(RBNextMessageId(), "NewClient", new object[] { client });
                 }
                 else
                 {
                     Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT] Already know about client <id:{0} ; url:{1}>, do not need to broadcast", id, url));
                 }
-                
+
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT][FINISH] Client <id:{0} ; url:{1}> connected successfully, will give known servers urls", id, url));
 
                 //Give Known Servers to Client
                 return ServerNames.ToDictionary(entry => entry.Key, entry => entry.Value); ;
-                }
+            }
 
             void IMSDADServerToServer.NewClient(ServerClient client)
             {
@@ -510,7 +514,7 @@ namespace MSDAD
                 }
                 return this.ServerId;
             }
-            
+
             void IMSDADServerPuppet.ShutDown()
             {
                 Environment.Exit(1);
@@ -623,28 +627,30 @@ namespace MSDAD
             /***********************************************************************************************************************/
             /*************************************************Failure Detector******************************************************/
             /***********************************************************************************************************************/
- 
-            public async void FailureDetector() 
+
+            public async void FailureDetector()
             {
 
-                
-                while(true)
+
+                while (true)
                 {
-                    foreach(KeyValuePair <String, IMSDADServerToServer> pair in ServerView) 
+                    foreach (KeyValuePair<String, IMSDADServerToServer> pair in ServerView)
                     {
                         Action<object> action = (object obj) => { pair.Value.Ping(); };
                         Task task = new Task(action, null);
-                        task.Start(); 
+                        task.Start();
 
-                        if (await Task.WhenAny(task, Task.Delay(Timeouts[pair.Key])) != task) {
+                        if (await Task.WhenAny(task, Task.Delay(Timeouts[pair.Key])) != task)
+                        {
                             // timeout logic
                             CountFails[pair.Key] += 1;
                             Timeouts[pair.Key] = TimeSpan.FromMilliseconds(Timeouts[pair.Key].TotalMilliseconds + 500);
-                            Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " did not ping back, happened {0} times, next timeout: {1} miliseconds", 
+                            Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " did not ping back, happened {0} times, next timeout: {1} miliseconds",
                                                                                                 CountFails[pair.Key], Timeouts[pair.Key].TotalMilliseconds);
 
                         }
-                        else {
+                        else
+                        {
                             // task completed within timeout
                             CountFails[pair.Key] = 0;
                             Timeouts[pair.Key] = timeout;
@@ -655,12 +661,12 @@ namespace MSDAD
                             Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " failed");
                             ServerView.TryRemove(pair.Key, out _);
                         }
-                        
+
                     }
                     Thread.Sleep(1000 * 10);
                 }
             }
-            
+
             /***********************************************************************************************************************/
             /*************************************************Reliable Broadcast****************************************************/
             /***********************************************************************************************************************/
@@ -675,14 +681,14 @@ namespace MSDAD
             void RB_Broadcast(string messageId, string operation, object[] args)
             {
                 Console.WriteLine(String.Format("[RELIABLE-BROADCAST] Send message with id {0} for operation {1}, wait for {2} acks", messageId, operation, MaxFaults));
-                RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults));    
+                RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults));
                 foreach (IMSDADServerToServer server in this.ServerView.Values)
                 {
                     RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
                     IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
                 }
                 RBMessages[messageId].Wait();
-                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);    
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
             }
 
             //This method is called by Reliable Broadcast when a message is received from another server and then broadcast back (IE it needs to sleep)
@@ -707,7 +713,7 @@ namespace MSDAD
                 }
                 else
                 {
-                    
+
                     //Already seen this message, ack
                     lock (RBMessages[messageId])
                     {
@@ -735,61 +741,57 @@ namespace MSDAD
                 }
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Send message for operation {0} with clock {1}", operation, vec));
                 RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { vec, operation, args });
-                
+
             }
 
             void IMSDADServerToServer.Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args)
             {
+                SafeSleep();
                 //Do not need to sleep as this is delivered from RB
                 int rand_id = random.Next();
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Received message for operation {0} with id {1}", operation, rand_id));
                 while (true)
-                { 
-                    int clockDiference = 0;
-                    string clockId = "";
-
-
-                    foreach (String id in VectorClock.Keys)
+                {
+                    lock (VectorClock)
                     {
-                        if (VectorClock[id] < clock[id])
+
+                        int clockDiference = 0;
+                        string clockId = "";
+                        foreach (String id in VectorClock.Keys)
                         {
-                            clockDiference += VectorClock[id] - clock[id];
-                            clockId = id;
+                            if (VectorClock[id] < clock[id])
+                            {
+                                clockDiference += VectorClock[id] - clock[id];
+                                clockId = id;
+                            }
                         }
-                    }
-                    Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock diference for operation {0} with id {2} is {1}", operation, clockDiference, rand_id));
 
-                    if (clockDiference < -1)
-                    {
-                        lock (CausalOrderLock)
+                        Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock diference for operation {0} with id {2} is {1}", operation, clockDiference, rand_id));
+
+                        if (clockDiference < -1)
                         {
                             Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} with id {1} (is {2} and must be -1)", operation, rand_id, clockDiference));
-                            Monitor.Wait(CausalOrderLock);
+                            Monitor.Wait(VectorClock);
                             Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} has been notified of changing of clocks, will recalculate diference", operation, rand_id));
+
                         }
-                    }
-                    else
-                    {
-                        Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} can now be executed", operation, rand_id));
-                        //For the case he sends to itself don't need to increment
-                        if (clockDiference != 0)
+                        else
                         {
-                            lock (CausalOrderLock)
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} can now be executed", operation, rand_id));
+                            //For the case he sends to itself don't need to increment
+                            if (clockDiference != 0)
                             {
                                 VectorClock[clockId]++;
                                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Message with id {0} has updated the clock, will notify all pending messages", operation, rand_id));
-                                Monitor.PulseAll(CausalOrderLock);
-
+                                Monitor.PulseAll(VectorClock);
                             }
+                            break;
                         }
-                        break;
                     }
                 }
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0} with id {1}", operation, rand_id));
                 GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
-
             }
-
         }
     }
 }
