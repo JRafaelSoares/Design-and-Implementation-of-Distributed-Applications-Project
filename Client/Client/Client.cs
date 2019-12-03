@@ -25,7 +25,7 @@ namespace MSDAD
             private readonly String ClientId;
             private readonly String ClientURL;
             private int milliseconds;
-            private readonly Dictionary<String, Meeting> Meetings = new Dictionary<string, Meeting>();
+            private Dictionary<String, Meeting> Meetings { get; set; } = new Dictionary<string, Meeting>();
             private static readonly Object CreateMeetingLock = new object();
 
 
@@ -86,7 +86,7 @@ namespace MSDAD
                 }
             }
 
-            private void CloseMeeting(String topic)
+             private void CloseMeeting(String topic)
             {
                 SafeSleep();
                 try
@@ -228,6 +228,11 @@ namespace MSDAD
 
             }
 
+            Dictionary<String, Meeting> IMSDADClientToClient.SendMeetings()
+            {
+                return this.Meetings;
+            }
+
             static void Main(string[] args)
             {
                 if(args.Length != 6)
@@ -249,12 +254,21 @@ namespace MSDAD
                 }
                 else
                 {
+                    Console.WriteLine("CLIENT BEGINING");
                     String url = "tcp://" + args[5] + ":" +  args[1] + "/" + args[2];
                     Client client = new Client(server, args[0], args[3], url);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
                     //Register Client with server
                     client.KnownServers = server.NewClient(url, args[0]);
+
+                    string randomClientUrl = server.getRandomClient(client.ClientId);
+                    if(randomClientUrl != null)
+                    {
+                        Console.WriteLine("THE RANDOM CLIENT IS: " + randomClientUrl);
+                        IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), randomClientUrl);
+                        client.Meetings = otherClient.SendMeetings();
+                    }
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
