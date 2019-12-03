@@ -6,6 +6,7 @@ using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Runtime.Remoting.Messaging;
 
@@ -56,7 +57,10 @@ namespace MSDAD
             private ConcurrentDictionary<String, int> CountFails = new ConcurrentDictionary<String, int>();
             /**********************************/
 
-            
+            private ConcurrentDictionary<String, int> VectorClock = new ConcurrentDictionary<string, int>();
+            private List<CountdownEvent> CausalWaits = new List<CountdownEvent>();
+            private static readonly Object CausalOrderLock = new object();
+
             public Server(String ServerId, uint MaxFaults, int MinDelay, int MaxDelay, String ServerUrl)
             {
                 this.ServerId = ServerId;
@@ -64,6 +68,7 @@ namespace MSDAD
                 this.MinDelay = MinDelay;
                 this.MaxDelay = MaxDelay;
                 this.ServerUrl = ServerUrl;
+                this.VectorClock.TryAdd(this.ServerId, 0);
                 this.timeout = TimeSpan.FromMilliseconds((MaxDelay * 2) + 1000);
             }
 
@@ -101,6 +106,10 @@ namespace MSDAD
                         Console.WriteLine(String.Format("[SETUP] Successfully connected to server with url {0} successfully", args[i]));
                         String id = otherServer.NewServer(server.ServerId, server.ServerUrl);
                         server.ServerView[id] =  otherServer;
+                        server.ServerNames.TryAdd(id, args[i]);
+                        server.VectorClock.TryAdd(id, 0);
+                        Console.WriteLine(String.Format("[SETUP] server with url {0} has id {1} and has been added to my view", args[i], id));
+
                     }
                     else
                     {
@@ -161,9 +170,10 @@ namespace MSDAD
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
                 SafeSleep();
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][RELIABLE-BROADCAST] Broadcast meeting with topic {0} to other servers", topic));
+                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][CAUSAL-SEND] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
-                this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
+                Send_CausalOrder("CreateMeeting", new object[] { topic, meeting });
+                //this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
@@ -248,11 +258,13 @@ namespace MSDAD
 
                 CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
                 
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][QUERY] Propagate join of user {0} to meeting with topic {1} to {2} servers", userId, topic, this.MaxFaults));
+                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][CAUSAL-SEND] Propagate join of user {0} to meeting with topic {1} to {2} servers", userId, topic, this.MaxFaults));
 
+                Send_CausalOrder("JoinMeeting", new object[] { topic, slots, userId, timestamp });
+                
                 //Propagate the join and wait for maxFaults responses
                 //FIXME Should be causal send Join Meeting
-                foreach (IMSDADServerToServer otherServer in this.ServerView.Values)
+                /*foreach (IMSDADServerToServer otherServer in this.ServerView.Values)
                 {
                     JoinAsyncDelegate RemoteDel = new JoinAsyncDelegate(otherServer.JoinMeeting);
                     AsyncCallback RemoteCallback = new AsyncCallback(ar =>
@@ -274,7 +286,7 @@ namespace MSDAD
                 
                 latch.Wait();
                 //Cannot dispose latch because callback uses it
-
+                */
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][FINISH] User {0} joined meeting with topic {1} finished", userId, topic));
                 return;
             }
@@ -438,7 +450,6 @@ namespace MSDAD
             void IMSDADServerToServer.Ping()
             {
                 SafeSleep();
-                Console.WriteLine("I was pinged, and I am server" + this.ServerId + "!");
                 return;
             }
 
@@ -485,6 +496,7 @@ namespace MSDAD
                     CountFails.TryAdd(id, 0);
                     ServerView.TryAdd(id, otherServer);
                     ServerNames.TryAdd(id, url);
+                    VectorClock.TryAdd(id, 0);
                     Console.WriteLine("[INFO][SERVER-TO-SERVER][NEW-SERVER][FINISH] Successfully connected to server at address {0}", url);
                 }
                 else
@@ -603,9 +615,8 @@ namespace MSDAD
             /***********************************************************************************************************************/
 
             //FIXME (waitOne isn't what we thought it was) 
-            public void FailureDetector() 
+            public async void FailureDetector() 
             {
-
 
                 TimeSpan tempTimeout = timeout;
 
@@ -615,30 +626,29 @@ namespace MSDAD
                     foreach(KeyValuePair <String, IMSDADServerToServer> pair in ServerView) 
                     {
 
-                        PingDelegate asyncPingDelegate = new PingDelegate(pair.Value.Ping);
-                        IAsyncResult RemAr = asyncPingDelegate.BeginInvoke(null, null);
-                        RemAr.AsyncWaitHandle.WaitOne(tempTimeout);
+                        Action<object> action = (object obj) => { pair.Value.Ping(); };
 
-                        Console.WriteLine("Async completed, answer: " + RemAr.IsCompleted + " for server " + pair.Key);
+                        Task task = new Task(action, null);
+                        task.Start(); 
 
-                        if (!RemAr.IsCompleted)
-                        {
-                            Console.WriteLine("The server" + pair.Key + "failed");
+                        if (await Task.WhenAny(task, Task.Delay(tempTimeout)) != task) {
+                         
+                            // timeout logic
                             CountFails[pair.Key] += 1;
                             tempTimeout = TimeSpan.FromMilliseconds(tempTimeout.Milliseconds * 2);
-                        }
-                        else
+                        } else { 
+
+                            // task completed within timeout
                             CountFails[pair.Key] = 0;
+                        }
 
-                        //If a server fails maxFailures times, we assume it as dead 
-
-                        //Maybe need to lock here
                         if (CountFails[pair.Key] == maxFailures)
                         {
-                            Console.WriteLine("Server" + pair.Key + "failed");
+                            Console.WriteLine("Server " + pair.Key + " failed");
                             ServerView.TryRemove(pair.Key, out _);
                             tempTimeout = timeout;
-                        }        
+                        }
+                        
                     }
                     Thread.Sleep(1000 * 10); //Each minute, it checks if each server is alive 
                 }
@@ -657,15 +667,15 @@ namespace MSDAD
             //knows that the message is new as it is the one he is sending
             void RB_Broadcast(string messageId, string operation, object[] args)
             {
-            
-            RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults));    
-            foreach (IMSDADServerToServer server in this.ServerView.Values)
-            {
-                RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
-                IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
-            }
-            RBMessages[messageId].Wait();
-            GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);    
+                Console.WriteLine(String.Format("[RELIABLE-BROADCAST] Send message with id {0} for operation {1}, wait for {2} acks", messageId, operation, MaxFaults));
+                RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults));    
+                foreach (IMSDADServerToServer server in this.ServerView.Values)
+                {
+                    RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
+                    IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
+                }
+                RBMessages[messageId].Wait();
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);    
             }
 
             //This method is called by Reliable Broadcast when a message is received from another server and then broadcast back (IE it needs to sleep)
@@ -674,26 +684,103 @@ namespace MSDAD
                 SafeSleep();
                 if (RBMessages.TryAdd(messageId, new CountdownEvent((int)MaxFaults)))
                 {
+                    Console.WriteLine(String.Format("[RELIABLE-BROADCAST-SEND] Received message with id {0} for operation {1} for the first time, wait for {2} acks", messageId, operation, MaxFaults));
+
                     //First time seeing this message, rebroadcast and wait for F acks
                     foreach (IMSDADServerToServer server in this.ServerView.Values)
                     {
                         RBSendDelegate remoteDel = new RBSendDelegate(server.RB_Send);
                         IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
                     }
+                    //Already received first ack
+                    RBMessages[messageId].Signal();
+                    Console.WriteLine(String.Format("[RELIABLE-BROADCAST-SEND] ACK for message with id {0} for operation {1}. Need to wait for {2} more acks", messageId, operation, RBMessages[messageId].CurrentCount));
                     RBMessages[messageId].Wait();
                     GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
                 }
                 else
                 {
+                    
                     //Already seen this message, ack
                     lock (RBMessages[messageId])
                     {
                         if (!RBMessages[messageId].IsSet)
                         {
                             RBMessages[messageId].Signal();
+                            Console.WriteLine(String.Format("[RELIABLE-BROADCAST-SEND] ACK for message with id {0} for operation {1}. Need to wait for {2} more acks", messageId, operation, RBMessages[messageId].CurrentCount));
+
                         }
                     }
                 }
+            }
+
+            /***********************************************************************************************************************/
+            /*************************************************Causal Order Broadcast************************************************/
+            /***********************************************************************************************************************/
+
+            void Send_CausalOrder(string operation, object[] args)
+            {
+                ConcurrentDictionary<String, int> vec;
+                lock (this.VectorClock)
+                {
+                    this.VectorClock[this.ServerId]++;
+                    vec = new ConcurrentDictionary<String, int>(this.VectorClock);
+                }
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Send message for operation {0} with clock {1}", operation, vec));
+                RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { vec, operation, args });
+                
+            }
+
+            void IMSDADServerToServer.Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args)
+            {
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Received message for operation {0} with clock {1}", operation, clock));
+                SafeSleep();
+                
+                while (true)
+                { 
+                    int clockDiference = 0;
+                    string clockId = "";
+
+
+                    foreach (String id in VectorClock.Keys)
+                    {
+                        if (VectorClock[id] < clock[id])
+                        {
+                            clockDiference += VectorClock[id] - clock[id];
+                            clockId = id;
+                        }
+                    }
+                    Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock diference for operation {0} is {1}", operation, clockDiference));
+
+                    if (clockDiference < -1)
+                    {
+                        lock (CausalOrderLock)
+                        {
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} (must be only 1)", operation));
+                            Monitor.Wait(CausalOrderLock);
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} has been notified of changing of clocks, will recalculate diference", operation));
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} can now be executed", operation));
+                        //For the case he sends to itself don't need to increment
+                        if (clockDiference != 0)
+                        {
+                            lock (CausalOrderLock)
+                            {
+                                VectorClock[clockId]++;
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock has been updated, will notify all pending messages", operation));
+                                Monitor.PulseAll(CausalOrderLock);
+
+                            }
+                        }
+                        break;
+                    }
+                }
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0}", operation));
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
+
             }
         }
     }

@@ -19,6 +19,7 @@ namespace MSDAD
             private static readonly int WAIT_TIME = 3000;
             
             private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
+            private String CurrentServerUrl;
             private readonly IMSDADServer CurrentServer;
             private readonly String ClientId;
             private int milliseconds;
@@ -26,11 +27,12 @@ namespace MSDAD
             private static readonly Object CreateMeetingLock = new object();
 
 
-            public Client(IMSDADServer server, String userId)
+            public Client(IMSDADServer server, String userId, String serverUrl)
             {
                 this.CurrentServer = server;
                 this.ClientId = userId;
                 this.milliseconds = 0;
+                this.CurrentServerUrl = serverUrl;
             }
 
             private void ListMeetings()
@@ -225,12 +227,12 @@ namespace MSDAD
                 }
                 else
                 {
-
-                    Client client = new Client(server, args[0]);
+                    String url = "tcp://" + args[5] + ":" +  args[1] + "/" + args[2];
+                    Client client = new Client(server, args[0], url);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
                     //Register Client with server
-                    client.KnownServers = server.NewClient("tcp://" + args[5] + ":" +  args[1] + "/" + args[2], args[0]);
+                    client.KnownServers = server.NewClient(url, args[0]);
 
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))

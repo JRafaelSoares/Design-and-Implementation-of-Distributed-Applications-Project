@@ -1,0 +1,4 @@
+AddRoom Lisboa 2 room1
+AddRoom Porto 1 room2
+Server s1 tcp://193.136.166.23:3001/server1 1 0 0
+Wait 1000
