@@ -27,6 +27,8 @@ namespace MSDAD
 
             void CloseMeeting(String topic, String userId);
 
+            String getRandomClient(String clientId);
+
         }
 
         [Serializable]
@@ -136,6 +138,7 @@ namespace MSDAD
         public interface IMSDADClientToClient
         {
             void CreateMeeting(String topic, Meeting meeting);
+            Dictionary<String, Meeting> SendMeetings();
         }
 
 
