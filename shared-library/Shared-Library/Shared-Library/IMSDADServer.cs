@@ -27,6 +27,7 @@ namespace MSDAD
 
             void CloseMeeting(String topic, String userId);
 
+            void Ping();
             String getRandomClient(String clientId);
 
         }

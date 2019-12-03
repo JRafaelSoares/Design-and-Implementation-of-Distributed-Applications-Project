@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
@@ -20,17 +21,19 @@ namespace MSDAD
             
             private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
             private String CurrentServerUrl;
-            private readonly IMSDADServer CurrentServer;
+            private IMSDADServer CurrentServer;
             private readonly String ClientId;
+            private readonly String ClientURL;
             private int milliseconds;
             private Dictionary<String, Meeting> Meetings { get; set; } = new Dictionary<string, Meeting>();
             private static readonly Object CreateMeetingLock = new object();
 
 
-            public Client(IMSDADServer server, String userId, String serverUrl)
+            public Client(IMSDADServer server, String userId, String serverUrl, String ClientURL)
             {
                 this.CurrentServer = server;
                 this.ClientId = userId;
+                this.ClientURL = ClientURL;
                 this.milliseconds = 0;
                 this.CurrentServerUrl = serverUrl;
             }
@@ -38,17 +41,25 @@ namespace MSDAD
             private void ListMeetings()
             {
                 SafeSleep();
-                IDictionary<String, Meeting> receivedMeetings = CurrentServer.ListMeetings(this.Meetings);
-                foreach(Meeting meeting in receivedMeetings.Values)
-                {
-                    this.Meetings[meeting.Topic] = meeting;
+                try
 
+                {
+                    IDictionary<String, Meeting> receivedMeetings = CurrentServer.ListMeetings(this.Meetings);
+                    foreach (Meeting meeting in receivedMeetings.Values)
+                    {
+                        this.Meetings[meeting.Topic] = meeting;
+
+                    }
+
+                    foreach (Meeting meeting in Meetings.Values)
+                    {
+                        Console.WriteLine(meeting.ToString());
+                    }
+
+                } catch (RemotingTimeoutException) {
+                    ReconnectingClient();
                 }
 
-                foreach(Meeting meeting in Meetings.Values)
-                {
-                    Console.WriteLine(meeting.ToString());
-                }
             }
 
             private void JoinMeeting(String topic, List<String> slots)
@@ -71,7 +82,7 @@ namespace MSDAD
                 }
                 catch (RemotingTimeoutException)
                 {
-
+                    ReconnectingClient();
                 }
             }
 
@@ -84,7 +95,9 @@ namespace MSDAD
                 } catch(MSDAD.Shared.ServerException e)
                 {
                     Console.Write(e.GetErrorMessage());
-                } 
+                } catch (RemotingTimeoutException) {
+                    ReconnectingClient();
+                }
             }
 
             private void CreateMeeting(String topic, uint min_atendees, List<String> slots, HashSet<String> invitees)
@@ -116,7 +129,14 @@ namespace MSDAD
                     }
                     Meetings.Add(topic, meeting);
                 
-                }catch (MSDAD.Shared.ServerException e)
+                } catch (System.Net.Sockets.SocketException e)
+                {
+                    ReconnectingClient();
+                }
+                catch (RemotingTimeoutException) {
+                    ReconnectingClient();
+                }
+                catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
                 }
@@ -205,6 +225,7 @@ namespace MSDAD
                 {
                     Meetings.Add(topic, meeting);
                 }
+
             }
 
             Dictionary<String, Meeting> IMSDADClientToClient.SendMeetings()
@@ -223,6 +244,7 @@ namespace MSDAD
                 TcpChannel channel = new TcpChannel(Int32.Parse(args[1]));
                 ChannelServices.RegisterChannel(channel, false);
                 IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
+                Console.WriteLine("This is the first server I'm connecting to!" + args[3]);
 
 
                 if (server == null)
@@ -234,7 +256,7 @@ namespace MSDAD
                 {
                     Console.WriteLine("CLIENT BEGINING");
                     String url = "tcp://" + args[5] + ":" +  args[1] + "/" + args[2];
-                    Client client = new Client(server, args[0], url);
+                    Client client = new Client(server, args[0], args[3], url);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
                     //Register Client with server
@@ -275,6 +297,39 @@ namespace MSDAD
                 Environment.Exit(1);
             }
 
+            public void ReconnectingClient()
+            {
+                Console.WriteLine("The server crashed, reconnecting to a new server");
+
+                Random r = new Random();
+
+                int i = r.Next(0, KnownServers.Count);
+
+                //Choose random server to connect to
+
+                Dictionary<string, string>.KeyCollection keyColl = KnownServers.Keys;
+                foreach (string s in keyColl)
+                {
+                    if (i != 0)
+                    {
+                        i--;
+                        continue;
+                    }
+                    CurrentServerUrl = KnownServers[s];
+                }
+
+                CurrentServer = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), CurrentServerUrl);
+                KnownServers = CurrentServer.NewClient(ClientURL, ClientId);
+
+                Console.WriteLine("The current server is now: " + CurrentServerUrl);
+
+               /* //Testing only
+                foreach (String s in KnownServers.Keys)
+                {
+                    Console.WriteLine("This is the second server i'm connecting to: " + s);
+                }*/
+
+            }
         }
     }
 }
