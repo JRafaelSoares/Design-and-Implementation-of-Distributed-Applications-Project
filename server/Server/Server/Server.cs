@@ -148,9 +148,9 @@ namespace MSDAD
                     server.CountFails.TryAdd(otherServer, 0);
                 }
 
-                Thread t = new Thread(new ThreadStart(server.FailureDetector));
+                /*Thread t = new Thread(new ThreadStart(server.FailureDetector));
                 t.IsBackground = true;
-                t.Start();
+                t.Start();*/
                 Console.ReadLine();
             }
 
@@ -625,7 +625,6 @@ namespace MSDAD
                 
                 while(true)
                 {
-
                     foreach(KeyValuePair <String, IMSDADServerToServer> pair in ServerView) 
                     {
                         Action<object> action = (object obj) => { pair.Value.Ping(); };
@@ -736,9 +735,9 @@ namespace MSDAD
 
             void IMSDADServerToServer.Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args)
             {
-                Console.WriteLine(String.Format("[CAUSAL-ORDER] Received message for operation {0} with clock {1}", operation, clock));
-                SafeSleep();
-                
+                //Do not need to sleep as this is delivered from RB
+                int rand_id = random.Next();
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Received message for operation {0} with id {1}", operation, rand_id));
                 while (true)
                 { 
                     int clockDiference = 0;
@@ -753,27 +752,27 @@ namespace MSDAD
                             clockId = id;
                         }
                     }
-                    Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock diference for operation {0} is {1}", operation, clockDiference));
+                    Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock diference for operation {0} with id {2} is {1}", operation, clockDiference, rand_id));
 
                     if (clockDiference < -1)
                     {
                         lock (CausalOrderLock)
                         {
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} (must be only 1)", operation));
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} with id {1} (is {2} and must be -1)", operation, rand_id, clockDiference));
                             Monitor.Wait(CausalOrderLock);
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} has been notified of changing of clocks, will recalculate diference", operation));
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} has been notified of changing of clocks, will recalculate diference", operation, rand_id));
                         }
                     }
                     else
                     {
-                        Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} can now be executed", operation));
+                        Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} can now be executed", operation, rand_id));
                         //For the case he sends to itself don't need to increment
                         if (clockDiference != 0)
                         {
                             lock (CausalOrderLock)
                             {
                                 VectorClock[clockId]++;
-                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Clock has been updated, will notify all pending messages", operation));
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Message with id {0} has updated the clock, will notify all pending messages", operation, rand_id));
                                 Monitor.PulseAll(CausalOrderLock);
 
                             }
@@ -781,7 +780,7 @@ namespace MSDAD
                         break;
                     }
                 }
-                Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0}", operation));
+                Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0} with id {1}", operation, rand_id));
                 GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
 
             }
