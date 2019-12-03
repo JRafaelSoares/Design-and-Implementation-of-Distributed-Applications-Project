@@ -344,7 +344,9 @@ namespace MSDAD
 
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT][FINISH] Client <id:{0} ; url:{1}> connected successfully, will give known servers urls", id, url));
                 //Give Known Servers to Client
-                return ServerNames.ToDictionary(entry => entry.Key, entry => entry.Value);
+                Dictionary<string, string> tempServerNames = ServerNames.ToDictionary(entry => entry.Key, entry => entry.Value);
+                tempServerNames.Remove(ServerId);
+                return tempServerNames;
             }
             
             String IMSDADServer.getRandomClient(String clientId)
