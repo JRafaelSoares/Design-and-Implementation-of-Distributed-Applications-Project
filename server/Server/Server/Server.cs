@@ -709,11 +709,11 @@ namespace MSDAD
 
             void Send_CausalOrder(string operation, object[] args)
             {
-                Dictionary<String, int> vec;
+                ConcurrentDictionary<String, int> vec;
                 lock (this.VectorClock)
                 {
                     this.VectorClock[this.ServerId]++;
-                    vec = new Dictionary<String, int>(this.VectorClock);
+                    vec = new ConcurrentDictionary<String, int>(this.VectorClock);
                 }
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Send message for operation {0} with clock {1}", operation, vec));
                 RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { vec, operation, args });
@@ -730,7 +730,7 @@ namespace MSDAD
                     int clockDiference = 0;
                     string clockId = "";
 
-                    //FIXME MAKE METHOD COMPUTE CLOCK DIFERENCE
+
                     foreach (String id in VectorClock.Keys)
                     {
                         if (VectorClock[id] < clock[id])
