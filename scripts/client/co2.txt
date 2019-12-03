@@ -1,0 +1,5 @@
+wait 2500
+join myTopic0 1 Lisboa,2020-01-02
+wait 400
+join myTopic1 1 Lisboa,2020-01-02
+list
