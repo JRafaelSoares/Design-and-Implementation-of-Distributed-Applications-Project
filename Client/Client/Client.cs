@@ -59,10 +59,12 @@ namespace MSDAD
                 }
                 catch (System.Net.Sockets.SocketException e)
                 {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.ListMeetings();
                 }
                 catch (RemotingTimeoutException) {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.ListMeetings();
                 } 
 
             }
@@ -87,11 +89,13 @@ namespace MSDAD
                 }
                 catch (System.Net.Sockets.SocketException e)
                 {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.JoinMeeting(topic, slots);
                 }
                 catch (RemotingTimeoutException)
                 {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.JoinMeeting(topic, slots);
                 } 
             }
 
@@ -108,11 +112,14 @@ namespace MSDAD
                 }
                 catch (System.Net.Sockets.SocketException e)
                 {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.CloseMeeting(topic);
+
                 }
                 catch (RemotingTimeoutException)
                 {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.CloseMeeting(topic);
                 }
 
             }
@@ -148,10 +155,14 @@ namespace MSDAD
                 
                 } catch (System.Net.Sockets.SocketException e)
                 {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.CreateMeeting(topic, min_atendees, slots, invitees);
+                    
                 } 
                 catch (RemotingTimeoutException) {
-                    ReconnectingClient();
+                    this.ReconnectingClient();
+                    this.CreateMeeting(topic, min_atendees, slots, invitees);
+
                 }
                 catch (MSDAD.Shared.ServerException e)
                 {
@@ -317,9 +328,9 @@ namespace MSDAD
             public void ReconnectingClient()
             {
                 Console.WriteLine("The server crashed, reconnecting to a new server");
+                KnownServers.Remove(CurrentServerUrl);
 
                 Random r = new Random();
-
                 int i = r.Next(0, KnownServers.Count);
 
                 //Choose random server to connect to
@@ -334,17 +345,11 @@ namespace MSDAD
                     }
                     CurrentServerUrl = KnownServers[s];
                 }
-
                 CurrentServer = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), CurrentServerUrl);
                 KnownServers = CurrentServer.NewClient(ClientURL, ClientId);
 
                 Console.WriteLine("The current server is now: " + CurrentServerUrl);
 
-               /* //Testing only
-                foreach (String s in KnownServers.Keys)
-                {
-                    Console.WriteLine("This is the second server i'm connecting to: " + s);
-                }*/
 
             }
         }
