@@ -218,11 +218,13 @@ namespace Puppet_Master
 
         private void Freeze(string serverId)
         {
-
+            this.Servers[new Puppet(serverId, "")].Freeze();
         }
 
         private void Unfreeze(string serverId)
         {
+
+            this.Servers[new Puppet(serverId, "")].Unfreeze();
 
         }
 
