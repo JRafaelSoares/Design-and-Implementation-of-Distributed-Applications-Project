@@ -117,6 +117,8 @@ namespace MSDAD
                 Server server = new Server(args[1], UInt32.Parse(args[4]), Int32.Parse(args[5]), Int32.Parse(args[6]), ServerUrl);
                 RemotingServices.Marshal(server, args[2], typeof(Server));
 
+                server.LeaderToken = true;
+
                 //Get Server URLS and connect to them
                 int i;
                 for (i = 8; i < 8 + Int32.Parse(args[7]); ++i)
@@ -130,6 +132,10 @@ namespace MSDAD
                         // of the system and none crashes while the system is setup
                         Console.WriteLine(String.Format("[SETUP] Successfully connected to server with url {0} successfully", args[i]));
                         String id = otherServer.NewServer(server.ServerId, server.ServerUrl);
+                        if(String.Compare(id, server.ServerId) < 0)
+                        {
+                            server.LeaderToken = false;
+                        }
                         server.CountFails.TryAdd(id, 0);
                         server.Timeouts.TryAdd(id, server.timeout);
                         server.ServerView[id] = otherServer;
@@ -146,11 +152,9 @@ namespace MSDAD
 
                 }
 
-                //TODO: We dont need this anymore
-                //Means that it is the first server to be created
-                if (server.ServerView.Count == 0)
+                if (server.LeaderToken)
                 {
-                    server.LeaderToken = true;
+                    Console.WriteLine(String.Format("[LEADER] I am Leader"));
                 }
 
                 //Create Locations
@@ -495,6 +499,11 @@ namespace MSDAD
                     ServerView.TryAdd(id, otherServer);
                     ServerNames.TryAdd(id, url);
                     VectorClock.TryAdd(id, 0);
+                    if(String.Compare(id, this.ServerId) < 0)
+                    {
+                        Console.WriteLine("[LEADER] I am no longer Leader");
+                        this.LeaderToken = false;
+                    }
                     Console.WriteLine("[INFO][SERVER-TO-SERVER][NEW-SERVER][FINISH] Successfully connected to server at address {0}", url);
                 }
                 else
@@ -504,7 +513,7 @@ namespace MSDAD
                 return this.ServerId;
             }
             /***********************************************************************************************************************/
-            /*************************************************Total Order********************************************************/
+            /***************************************************Total Order*********************************************************/
             /***********************************************************************************************************************/
 
             void TotalOrder_Send(String operation, object[] args)
@@ -524,8 +533,7 @@ namespace MSDAD
                     TOPending.TryAdd(messageId, new Tuple<string, object[]>(operation, args));
                 }
 
-                //if(I am leader)
-                if (true)
+                if (LeaderToken)
                 {
                     Console.WriteLine(String.Format("[TOTAL-ORDER][LEADER][SEND] Sending message for operation <{0};{1}>", operation, rand_id));
                     ViewSync_Send("TotalOrder_Deliver", new object[] { messageId });
@@ -753,6 +761,13 @@ namespace MSDAD
 
             void IMSDADServerToServer.StartSendingNewView()
             {
+                CalculateNewLeader();
+                List<String> pendings = this.TOPending.Keys.ToList();
+                pendings.Sort();
+                foreach(String pendingKey in pendings)
+                {
+                    GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[pendingKey].Item1).Invoke(this, TOPending[pendingKey].Item2);
+                }
                 Console.WriteLine("[VIEW-SYNC][NEW-VIEW][START-NEW-VIEW] Now that everyone has the view we can start sending messages again");
                 this.ChangeViewFlagSend = false;
                 Console.WriteLine("[VIEW-SYNC][NEW-VIEW][START-NEW-VIEW] Wakeup everyone who wanted to send a message");
@@ -777,6 +792,32 @@ namespace MSDAD
                     this.ChangeViewFlagDeliver = true;
                 }
 
+            }
+
+            void CalculateNewLeader()
+            {
+                List<string> servers = ServerView.Keys.ToList();
+                servers.Sort();
+                String leader = servers.FirstOrDefault();
+                if(leader == null)
+                {
+                    Console.WriteLine("[LEADER-CHANGE] I am leader and only one");
+                    this.LeaderToken = true;
+                }
+                else
+                {
+                    if (leader.CompareTo(ServerId) > 0)
+                    {
+                        Console.WriteLine("[LEADER-CHANGE] I am leader");
+                        this.LeaderToken = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("[LEADER-CHANGE] I am not leader");
+                        this.LeaderToken = false;
+                    }
+                }
+                
             }
             /***********************************************************************************************************************/
             /*************************************************Failure Detector******************************************************/
