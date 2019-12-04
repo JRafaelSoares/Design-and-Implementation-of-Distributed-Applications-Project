@@ -89,6 +89,9 @@ namespace MSDAD
             private ConcurrentDictionary<String, Tuple<String, object[]>> TOPending = new ConcurrentDictionary<string, Tuple<string, object[]>>();
             /***************************************************/
 
+            /*********Properties for TotalOrder****************/
+            public String TOLeader;
+
 
 
             /***********************************************************************************************************************/
@@ -143,6 +146,7 @@ namespace MSDAD
 
                 }
 
+                //TODO: We dont need this anymore
                 //Means that it is the first server to be created
                 if (server.ServerView.Count == 0)
                 {
@@ -505,29 +509,46 @@ namespace MSDAD
 
             void TotalOrder_Send(String operation, object[] args)
             {
+                int rand_id = random.Next();
+                Console.WriteLine(String.Format("[TOTAL-ORDER][SEND] Send message for operation <{0};{1}>", operation, rand_id));
                 ViewSync_Send("TotalOrder_Pending", new object[] { TONextMessageId(), operation, args });
             }
 
             void IMSDADServerToServer.TotalOrder_Pending(String messageId, String operation, object[] args)
             {
-                TOPending.TryAdd(messageId, new Tuple<string, object[]>(operation, args));
+                int rand_id = random.Next();
+                Console.WriteLine(String.Format("[TOTAL-ORDER][PENDING] Pending message for operation <{0};{1}>", operation, rand_id));
+
+                lock (TOPending)
+                {
+                    TOPending.TryAdd(messageId, new Tuple<string, object[]>(operation, args));
+                }
 
                 //if(I am leader)
                 if (true)
                 {
+                    Console.WriteLine(String.Format("[TOTAL-ORDER][LEADER][SEND] Sending message for operation <{0};{1}>", operation, rand_id));
                     ViewSync_Send("TotalOrder_Deliver", new object[] { messageId });
                 }
             }
 
             void IMSDADServerToServer.TotalOrder_Deliver(String messageId)
             {
+                int rand_id = random.Next();
+                Console.WriteLine(String.Format("[TOTAL-ORDER][DELIVER] Recieved message for operation <{0};{1}>", TOPending[messageId].Item1, rand_id));
                 GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
-                TOPending.TryRemove(messageId, out _);
+                lock (TOPending)
+                {
+                    TOPending.TryRemove(messageId, out _);
+                }
             }
             private String TONextMessageId()
             {
                 return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.TOMessageCounter));
             }
+
+            //To know which one belongs where
+            //
 
 
             /***********************************************************************************************************************/
