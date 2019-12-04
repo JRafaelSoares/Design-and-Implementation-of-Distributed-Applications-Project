@@ -292,6 +292,11 @@ namespace MSDAD
                         IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), randomClientUrl);
                         client.Meetings = otherClient.SendMeetings();
                     }
+                    else
+                    {
+                        Console.WriteLine("NO OTHER CLIENT IN THE SYSTEM");
+
+                    }
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
                     {
