@@ -80,7 +80,10 @@ namespace MSDAD
 
             /***************************************************/
 
-
+            /*********Properties for ViewSync****************/
+            public int TOMessageCounter = 0;
+            private ConcurrentDictionary<String, Tuple<String, object[]>> TOPending = new ConcurrentDictionary<string, Tuple<string, object[]>>();
+            /***************************************************/
 
 
 
@@ -576,7 +579,38 @@ namespace MSDAD
                 return this.ServerId;
             }
             /***********************************************************************************************************************/
-            /*************************************************View Synchrony******************************************************/
+            /*************************************************Total Order********************************************************/
+            /***********************************************************************************************************************/
+
+            void TotalOrder_Send(String operation, object[] args)
+            {
+                ViewSync_Send("TotalOrder_Pending", new object[] {TONextMessageId(), operation, args });
+            }
+
+            void IMSDADServerToServer.TotalOrder_Pending(String messageId, String operation, object[] args)
+            {
+                TOPending.TryAdd(messageId, new Tuple<string, object[]>(operation, args));
+
+                //if(I am leader)
+                if (true)
+                {
+                    ViewSync_Send("TotalOrder_Deliver", new object[] { messageId });
+                }
+            }
+
+            void IMSDADServerToServer.TotalOrder_Deliver(String messageId)
+            {
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
+                TOPending.TryRemove(messageId, out _);
+            }
+            private String TONextMessageId()
+            {
+                return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.TOMessageCounter));
+            }
+
+
+            /***********************************************************************************************************************/
+            /*************************************************View Synchrony********************************************************/
             /***********************************************************************************************************************/
 
             void ViewSync_Send(string operation, object[] args)
