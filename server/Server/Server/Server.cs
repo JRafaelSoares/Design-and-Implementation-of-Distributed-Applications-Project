@@ -161,9 +161,9 @@ namespace MSDAD
                     server.CountFails.TryAdd(otherServer, 0);
                 }
 
-                /*Thread t = new Thread(new ThreadStart(server.FailureDetector));
+                Thread t = new Thread(new ThreadStart(server.FailureDetector));
                 t.IsBackground = true;
-                t.Start();*/
+                t.Start();
 
                 Console.ReadLine();
             }
