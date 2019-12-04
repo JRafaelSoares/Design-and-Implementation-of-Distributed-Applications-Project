@@ -133,7 +133,7 @@ namespace MSDAD
             void TotalOrder_Pending(String messageId, String operation, object[] args);
             void TotalOrder_Deliver(String messageId);
             ConcurrentDictionary<String, int> GetVectorClock();
-
+            void StartSendingNewView();
         }
 
         public interface IMSDADClientToClient
