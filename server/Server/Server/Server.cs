@@ -743,7 +743,16 @@ namespace MSDAD
                             Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " failed");
                             List<string> servers = ServerView.Keys.Where(x => x != pair.Key).ToList();
                             servers.Sort();
-                            ServerView[servers.First()].NewView(pair.Key);
+                            String leader = servers.First();
+                            if (leader.CompareTo(ServerId) > 0)
+                            {
+                                Console.WriteLine("[FAILURE-DETECTOR] I am leader of view change after " + pair.Key + " crashed");
+                                ((IMSDADServerToServer)this).NewView(pair.Key);
+                            }
+                            else {
+                                Console.WriteLine("[FAILURE-DETECTOR] Contact leader of view change after " + pair.Key + " crashed, which is server "+ pair.Key);
+                                ServerView[leader].NewView(pair.Key);
+                            }
                         }
                     }
                 }
