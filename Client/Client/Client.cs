@@ -88,7 +88,7 @@ namespace MSDAD
                     Console.WriteLine(e.GetErrorMessage());
 
                 }
-                catch (System.Net.Sockets.SocketException e)
+                catch (System.Net.Sockets.SocketException)
                 {
                     this.ReconnectingClient();
                     this.JoinMeeting(topic, slots);
@@ -111,7 +111,7 @@ namespace MSDAD
                 {
                     Console.Write(e.GetErrorMessage());
                 }
-                catch (System.Net.Sockets.SocketException e)
+                catch (System.Net.Sockets.SocketException)
                 {
                     this.ReconnectingClient();
                     this.CloseMeeting(topic);
@@ -148,7 +148,7 @@ namespace MSDAD
             
                     gossipMeeting(CurrentServer.getGossipClients(ClientId), meeting, topic);
                 
-                } catch (System.Net.Sockets.SocketException e)
+                } catch (System.Net.Sockets.SocketException)
                 {
                     this.ReconnectingClient();
                     this.CreateMeeting(topic, min_atendees, slots, invitees);
@@ -347,7 +347,7 @@ namespace MSDAD
                    
                     Console.WriteLine("The current server is now: " + CurrentServerUrl);
 
-                } catch (System.Net.Sockets.SocketException e)
+                } catch (System.Net.Sockets.SocketException)
                 {
                     ReconnectingClient();
 

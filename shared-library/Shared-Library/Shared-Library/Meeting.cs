@@ -285,12 +285,8 @@ namespace MSDAD
                 bestRoom.AddBooking(chosenSlot.Date);
 
                 //FIXME Use this when we are sending the Vector clocks!!!
-                //Users.Sort();
+                Users.Sort();
 
-                Users.Sort((x, y) =>
-                {
-                    return x.Timestamp <= y.Timestamp ? -1 : 1;
-                });
                 this.UsersNotJoined = Users.GetRange((int)numUsers, Users.Count - (int)numUsers);
                 Users = Users.GetRange(0, (int)numUsers);
 

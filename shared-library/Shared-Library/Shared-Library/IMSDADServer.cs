@@ -122,8 +122,6 @@ namespace MSDAD
             void Ping();
             void CreateMeeting(String topic, Meeting meeting);
             void CloseMeeting(String topic, Meeting meeting);
-            void MergeClosedMeeting(String topic, Meeting meeting);
-            Meeting LockMeeting(String topic);
             void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
             void RB_Send(String messageId, String operation, Object[] args);
             void Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args);
@@ -134,8 +132,6 @@ namespace MSDAD
             void BeginViewChange(String crashedId);
             void TotalOrder_Pending(String messageId, String operation, object[] args);
             void TotalOrder_Deliver(String messageId);
-
-
             ConcurrentDictionary<String, int> GetVectorClock();
 
         }
