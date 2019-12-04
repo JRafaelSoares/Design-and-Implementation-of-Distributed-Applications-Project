@@ -45,7 +45,8 @@ namespace MSDAD
                 try
 
                 {
-                    IDictionary<String, Meeting> receivedMeetings = CurrentServer.ListMeetings(this.Meetings);
+                    IDictionary<String, Meeting> receivedMeetings = CurrentServer.ListMeetings(this.Meetings.Where(x => x.Value.CanJoin(this.ClientId))
+                        .ToDictionary(entry => entry.Key, entry => entry.Value));
                     foreach (Meeting meeting in receivedMeetings.Values)
                     {
                         this.Meetings[meeting.Topic] = meeting;
