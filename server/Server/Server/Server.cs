@@ -46,6 +46,7 @@ namespace MSDAD
             public delegate void JoinAsyncDelegate(String topic, List<string> slots, String userId, DateTime timestamp);
             public delegate void MergeMeetingDelegate(String topic, Meeting meeting);
             public delegate void PingDelegate();
+            public delegate void BeginViewChange(String crashedId);
             /************************************/
 
             /*Properties for Reliable Broadcast*/
@@ -596,12 +597,26 @@ namespace MSDAD
 
                 Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Send request to stop the message exchange");
 
-                ViewSync_Send("BeginViewChange", new object[] { crashedId });
+                CountdownEvent latch = new CountdownEvent(this.ServerView.Count);
 
+                foreach (IMSDADServerToServer server in this.ServerView.Values)
+                {
+                    BeginViewChange remoteDel = new BeginViewChange(server.BeginViewChange);
+                    AsyncCallback RemoteCallBack = new AsyncCallback(ar =>
+                   {
+                       latch.Signal();
+                   });
+                    IAsyncResult RemAr = remoteDel.BeginInvoke(crashedId, RemoteCallBack, null);
+
+                }
+                latch.Wait();
+
+                ((IMSDADServerToServer)this).BeginViewChange(crashedId);
+                
                 Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY] Begin Compute Max Clock");
                 ConcurrentDictionary<String, int> maxClock = new ConcurrentDictionary<String, int>(this.VectorClock);
 
-                CountdownEvent latch = new CountdownEvent(this.ServerView.Count);
+                latch = new CountdownEvent(this.ServerView.Count);
 
                 foreach (IMSDADServerToServer server in this.ServerView.Values)
                 {
@@ -720,8 +735,13 @@ namespace MSDAD
 
             void IMSDADServerToServer.StartSendingNewView()
             {
+                Console.WriteLine("[VIEW-SYNC][NEW-VIEW][START-NEW-VIEW] Now that everyone has the view we can start sending messages again");
                 this.ChangeViewFlagSend = false;
-                Monitor.PulseAll(VSSendLock);
+                Console.WriteLine("[VIEW-SYNC][NEW-VIEW][START-NEW-VIEW] Wakeup everyone who wanted to send a message");
+                lock(VSSendLock)
+                {
+                    Monitor.PulseAll(VSSendLock);
+                }
             }
 
             void IMSDADServerToServer.BeginViewChange(String crashedId)
