@@ -629,7 +629,14 @@ namespace MSDAD
                 }
 
                 Console.WriteLine(String.Format("[VIEW-SYNCHRONY][SEND] operation <{0};{1}> can proceed as there is no view change in progress", operation, rand_id));
-                Send_CausalOrder("ViewSync_Deliver", new object[] { this.ServerId, this.VectorClock[this.ServerId], operation, args });
+                ConcurrentDictionary<String, int> messageClock;
+                lock (this.VectorClock)
+                {
+                    this.VectorClock[this.ServerId]++;
+                    messageClock = new ConcurrentDictionary<String, int>(this.VectorClock);
+                }
+
+                Send_CausalOrder(messageClock, "ViewSync_Deliver", new object[] { this.ServerId, messageClock[this.ServerId], operation, args });
             }
 
             void IMSDADServerToServer.ViewSync_Deliver(string serverId, int messageNumber, string operation, object[] args)
@@ -831,14 +838,8 @@ namespace MSDAD
             /*************************************************Causal Order Broadcast************************************************/
             /***********************************************************************************************************************/
 
-            void Send_CausalOrder(string operation, object[] args)
+            void Send_CausalOrder(ConcurrentDictionary<String, int> messageClock, string operation, object[] args)
             {
-                ConcurrentDictionary<String, int> messageClock;
-                lock (this.VectorClock)
-                {
-                    this.VectorClock[this.ServerId]++;
-                    messageClock = new ConcurrentDictionary<String, int>(this.VectorClock);
-                }
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Send message for operation {0} with clock {1}", operation, messageClock));
                 RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { messageClock, operation, args });
 
