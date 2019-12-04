@@ -581,6 +581,8 @@ namespace MSDAD
 
             void ViewSync_Send(string operation, object[] args)
             {
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY] Send message for operation {0}", operation));
+
                 while (this.ChangeViewFlag)
                 {
                     lock (VSSendLock)
@@ -788,17 +790,17 @@ namespace MSDAD
                         {
                             Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} with id {1} (is {2} and must be -1)", operation, rand_id, clockDiference));
                             Monitor.Wait(VectorClock);
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} has been notified of changing of clocks, will recalculate diference", operation, rand_id));
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has been notified of changing of clocks, will recalculate diference", operation, rand_id));
 
                         }
                         else
                         {
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} can now be executed", operation, rand_id));
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} can now be executed", operation, rand_id));
                             //For the case he sends to itself don't need to increment
                             if (clockDiference != 0)
                             {
                                 VectorClock[clockId]++;
-                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Message with id {0} has updated the clock, will notify all pending messages", operation, rand_id));
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has updated the clock, will notify all pending messages", operation, rand_id));
                                 Monitor.PulseAll(VectorClock);
                             }
                             break;
