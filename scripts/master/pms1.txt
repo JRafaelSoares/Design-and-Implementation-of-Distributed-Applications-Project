@@ -7,7 +7,7 @@ Wait 1000
 Server s3 tcp://localhost:3003/server3 1 100 200
 Wait 3000
 Client c1 tcp://localhost:4001/client1 tcp://localhost:3001/server1 nofile
-Wait 1000
+Wait 5000
 Client c2 tcp://localhost:4002/client2 tcp://localhost:3002/server2 nofile
 Wait 15000
 Status
