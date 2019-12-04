@@ -27,7 +27,7 @@ namespace MSDAD
 
             /*Server properties*/
             private readonly ConcurrentDictionary<String, Meeting> Meetings = new ConcurrentDictionary<string, Meeting>();
-            private readonly String ServerId;
+            private String ServerId;
             private readonly String ServerUrl;
             private readonly uint MaxFaults;
             private readonly int MinDelay;
@@ -345,7 +345,7 @@ namespace MSDAD
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT][FINISH] Client <id:{0} ; url:{1}> connected successfully, will give known servers urls", id, url));
                 //Give Known Servers to Client
                 Dictionary<string, string> tempServerNames = ServerNames.ToDictionary(entry => entry.Key, entry => entry.Value);
-                tempServerNames.Remove(ServerId);
+                //tempServerNames.Remove(ServerId);
                 return tempServerNames;
             }
             
@@ -771,6 +771,51 @@ namespace MSDAD
                 }
             }
 
+            /***********************************************************************************************************************/
+            /*******************************************************Gossip***********************************************************/
+            /***********************************************************************************************************************/
+
+            List<ServerClient> IMSDADServer.getGossipClients(string clientID)
+            {
+                SafeSleep();
+                List<String> URLs = new List<String>();
+                List<ServerClient> clients = new List<ServerClient>();
+                String s;
+
+                while(URLs.Count < ClientURLs.Count/ 2)
+                {
+                    KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientID);
+
+                    s = t.Equals(null) ? null : t.Key.Url;
+
+                    if (s == null)
+                        return null;
+
+                    if (!URLs.Contains(s))
+                        URLs.Add(s);
+                }
+
+                foreach(String url in URLs)
+                {
+                    foreach(ServerClient client in ClientURLs.Keys.ToList())
+                    {
+                        if (client.Url.Equals(url))
+                        {
+                            clients.Add(client);
+                            break;
+                        }
+                    }
+                }
+                return clients;
+            }
+
+            String IMSDADServer.getServerID()
+            {
+                return ServerId;
+            }
+
         }
+
+
     }
 }
