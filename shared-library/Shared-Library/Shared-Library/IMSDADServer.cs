@@ -128,6 +128,13 @@ namespace MSDAD
             void RB_Send(String messageId, String operation, Object[] args);
             void Deliver_CausalOrder(ConcurrentDictionary<String, int> clock, string operation, object[] args);
 
+            void NewView(String serverId);
+            void ViewSync_Deliver(string serverId, int clock, string operation, object[] args);
+            void RecieveVectorClock(ConcurrentDictionary<String, int> clock);
+            void BeginViewChange(String crashedId);
+
+            ConcurrentDictionary<String, int> GetVectorClock();
+
         }
 
         public interface IMSDADClientToClient
