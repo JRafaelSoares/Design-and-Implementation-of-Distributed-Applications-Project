@@ -75,7 +75,7 @@ namespace MSDAD
             private bool ChangeViewFlag = false;
             private ConcurrentDictionary<Tuple<String, int>, Tuple<string, object[]>> DeliverMessages = new ConcurrentDictionary<Tuple<string, int>, Tuple<string, object[]>>();
             private List<Tuple<String, object[]>> SendMessages = new List<Tuple<string, object[]>>();
-            private object VSLock = new object();
+            private object VSDeliverLock = new object();
             private object VSSendLock = new object();
 
             /***************************************************/
@@ -269,10 +269,10 @@ namespace MSDAD
 
             HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][CAUSAL-SEND] Broadcast meeting with topic {0} to other servers", topic));
+                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][VS-SEND] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
                 ViewSync_Send("CreateMeeting", new object[] { topic, meeting });
-                //this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
+                
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
@@ -601,28 +601,28 @@ namespace MSDAD
                     this.VectorClock[this.ServerId]++;
                     vec = new ConcurrentDictionary<String, int>(this.VectorClock);
                 }
-                Send_CausalOrder(vec, "ViewSync_Deliver", new object[] { this.ServerId, this.VectorClock[this.ServerId] + 1, operation, args });
+                Send_CausalOrder(vec, "ViewSync_Deliver", new object[] { this.ServerId, this.VectorClock[this.ServerId], operation, args });
             }
 
-            void IMSDADServerToServer.ViewSync_Deliver(string serverId, int clock, string operation, object[] args)
+            void IMSDADServerToServer.ViewSync_Deliver(string serverId, int messageNumber, string operation, object[] args)
             {
                 int rand_id = random.Next();
                 
-                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> to be delivered", operation, rand_id));
-                if (this.ChangeViewFlag)
-                {
-                    Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> cannot be delivered as there is a view change in progress, just add to pending list", operation, rand_id));
-                    lock (VSLock)
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> to be delivered", serverId, messageNumber));
+                lock (VSDeliverLock) {
+                    if (this.ChangeViewFlag)
                     {
-                        DeliverMessages.TryAdd(new Tuple<string, int>(serverId, clock), new Tuple<string, object[]>(operation, args));
-                        Monitor.PulseAll(VSLock);
+                        Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> cannot be delivered as there is a view change in " +
+                            "progress, just add to pending list", serverId, messageNumber));    
+                        DeliverMessages.TryAdd(new Tuple<string, int>(serverId, messageNumber), new Tuple<string, object[]>(operation, args));
+                        Monitor.PulseAll(VSDeliverLock);
+                        return;
                     }
                 }
-                else
-                {
-                    Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> is being delivered", operation, rand_id));
-                    GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
-                }
+                
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> is being delivered", serverId, messageNumber));
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
+                
             }
 
             void IMSDADServerToServer.NewView(String crashedId)
@@ -634,11 +634,12 @@ namespace MSDAD
                     Console.WriteLine(String.Format("[VIEW-SYNCHRONY][NEW-VIEW] Already know server {0} crashed, so no view will be changed", crashedId));
                     return;
                 }
-
-                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Will change view after server {0} crashed", crashedId);
                 ServerView.TryRemove(crashedId, out _);
 
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Will change view after server {0} crashed", crashedId);
+                
                 Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Send request to stop the message exchange");
+                
                 ViewSync_Send("BeginViewChange", new object[] { crashedId });
 
 
@@ -665,7 +666,6 @@ namespace MSDAD
 
                         latch.Signal();
                         Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY][ACK] Only {0} acks to go before query is complete", latch.CurrentCount);
-
                     });
                     IAsyncResult RemAr = remoteDel.BeginInvoke(RemoteCallBack, null);
                 }
@@ -687,7 +687,10 @@ namespace MSDAD
             {
                 Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][GET] Will give my vector clock");
                 SafeSleep();
-                return this.VectorClock;
+                lock (this.VectorClock)
+                {
+                    return this.VectorClock;
+                }
             }
 
             void IMSDADServerToServer.RecieveVectorClock(ConcurrentDictionary<String, int> maxClock)
@@ -696,7 +699,7 @@ namespace MSDAD
                 SafeSleep();
                 while (true)
                 {
-                    lock (VSLock)
+                    lock (VSDeliverLock)
                     {
                         Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Compute missing messages");
                         List<Tuple<String, int>> missingMessages = new List<Tuple<string, int>>();
@@ -714,7 +717,7 @@ namespace MSDAD
                         if (missingMessages.Except(DeliverMessages.Keys).Any())
                         {
                             Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Wait for missing messages");
-                            Monitor.Wait(VSLock);
+                            Monitor.Wait(VSDeliverLock);
                         }
                         else
                         {
@@ -726,6 +729,8 @@ namespace MSDAD
                             }
                             DeliverMessages.Clear();
                             this.ChangeViewFlag = false;
+                            //Changed view need to inform leader
+                            this.VectorClock = maxClock;    
                             Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Changed view, wake up everyone waiting");
                             Monitor.PulseAll(VSSendLock);
                             break;
@@ -739,6 +744,7 @@ namespace MSDAD
             void IMSDADServerToServer.BeginViewChange(String crashedId)
             {
                 this.ServerView.TryRemove(crashedId, out _);
+                this.ServerNames.TryRemove(crashedId, out _);
                 this.ChangeViewFlag = true;
             }
             /***********************************************************************************************************************/
@@ -783,7 +789,7 @@ namespace MSDAD
                             }
                             else
                             {
-                                Console.WriteLine("[FAILURE-DETECTOR] Contact leader of view change after " + pair.Key + " crashed, which is server " + pair.Key);
+                                Console.WriteLine("[FAILURE-DETECTOR] Contact leader of view change after " + pair.Key + " crashed, which is server " + leader);
                                 ServerView[leader].NewView(pair.Key);
                             }
                         }
@@ -809,12 +815,15 @@ namespace MSDAD
                 //Do not need to sleep as this is delivered from RB
                 int rand_id = random.Next();
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Received message for operation {0} with id {1}", operation, rand_id));
+
+                int clockDiference = 0;
+                string clockId = "";
                 while (true)
                 {
-                    lock (VectorClock)
+                    lock (this.VectorClock)
                     {
-                        int clockDiference = 0;
-                        string clockId = "";
+                        clockDiference = 0;
+                        clockId = "";
                         foreach (String id in VectorClock.Keys)
                         {
                             if (VectorClock[id] < clock[id])
@@ -839,6 +848,8 @@ namespace MSDAD
                             //For the case he sends to itself don't need to increment
                             if (clockDiference != 0)
                             {
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0} with id {1}", operation, rand_id));
+                                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
                                 VectorClock[clockId]++;
                                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has updated the clock, will notify all pending messages", operation, rand_id));
                                 Monitor.PulseAll(VectorClock);
@@ -847,9 +858,7 @@ namespace MSDAD
                         }
                     }
                 }
-                Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0} with id {1}", operation, rand_id));
-                GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
-            }
+                }
 
             /***********************************************************************************************************************/
             /*************************************************Reliable Broadcast****************************************************/
