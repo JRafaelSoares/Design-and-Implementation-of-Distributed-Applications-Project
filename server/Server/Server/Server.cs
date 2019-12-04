@@ -858,7 +858,6 @@ namespace MSDAD
                 string clockId = "";
                 while (true)
                 {
-                    Console.WriteLine("Try to aquire lock");
                     lock (this.VectorClock)
                     {
                         
@@ -866,8 +865,7 @@ namespace MSDAD
                         clockId = "";
                         foreach (String id in LastDelivered.Keys)
                         {
-                            Console.WriteLine("Lock Aquired");
-
+                            
                             if (LastDelivered[id] < messageClock[id])
                             {
                                 clockDiference += VectorClock[id] - messageClock[id];
