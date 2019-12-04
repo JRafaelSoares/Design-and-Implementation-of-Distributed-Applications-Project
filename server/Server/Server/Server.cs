@@ -69,7 +69,6 @@ namespace MSDAD
 
             /*********Properties for Causal Order****************/
             private ConcurrentDictionary<String, int> VectorClock = new ConcurrentDictionary<string, int>();
-            private ConcurrentDictionary<String, int> LastDelivered = new ConcurrentDictionary<string, int>();
             /***************************************************/
 
             /*********Properties for ViewSync****************/
@@ -129,7 +128,6 @@ namespace MSDAD
                         server.ServerView[id] = otherServer;
                         server.ServerNames.TryAdd(id, args[i]);
                         server.VectorClock.TryAdd(id, 0);
-                        server.LastDelivered.TryAdd(id, 0);
                         Console.WriteLine(String.Format("[SETUP] server with url {0} has id {1} and has been added to my view", args[i], id));
 
                     }
@@ -181,8 +179,7 @@ namespace MSDAD
                 this.MaxDelay = MaxDelay;
                 this.ServerUrl = ServerUrl;
                 this.VectorClock.TryAdd(this.ServerId, 0);
-                this.LastDelivered.TryAdd(this.ServerId, 0);
-            }
+                }
 
 
             /***********************************************************************************************************************/
@@ -573,7 +570,6 @@ namespace MSDAD
                     ServerView.TryAdd(id, otherServer);
                     ServerNames.TryAdd(id, url);
                     VectorClock.TryAdd(id, 0);
-                    LastDelivered.TryAdd(id, 0);
                     Console.WriteLine("[INFO][SERVER-TO-SERVER][NEW-SERVER][FINISH] Successfully connected to server at address {0}", url);
                 }
                 else
@@ -722,7 +718,7 @@ namespace MSDAD
                 SafeSleep();
                 lock (this.VectorClock)
                 {
-                    return this.LastDelivered;
+                    return this.VectorClock;
                 }
             }
 
@@ -738,7 +734,7 @@ namespace MSDAD
                         List<Tuple<String, int>> missingMessages = new List<Tuple<string, int>>();
                         foreach (String id in VectorClock.Keys)
                         {
-                            if (LastDelivered[id] < maxClock[id])
+                            if (VectorClock[id] < maxClock[id])
                             {
                                 for (int i = VectorClock[id] + 1; i <= maxClock[id]; i++)
                                 {
@@ -863,10 +859,10 @@ namespace MSDAD
                         
                         clockDiference = 0;
                         clockId = "";
-                        foreach (String id in LastDelivered.Keys)
+                        foreach (String id in messageClock.Keys)
                         {
                             
-                            if (LastDelivered[id] < messageClock[id])
+                            if (VectorClock[id] < messageClock[id])
                             {
                                 clockDiference += VectorClock[id] - messageClock[id];
                                 clockId = id;
@@ -887,17 +883,15 @@ namespace MSDAD
                             Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} can now be executed", operation, rand_id));
                             Console.WriteLine(String.Format("[CAUSAL-ORDER] Can now deliver message for operation {0} with id {1}", operation, rand_id));
                             GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
-                            this.LastDelivered[clockId]++;
-                            foreach (KeyValuePair<String, int> entry in messageClock)
+                            if (clockDiference != 0)
                             {
-                                if (entry.Value > this.VectorClock[entry.Key])
-                                {
-                                    this.VectorClock[entry.Key] = entry.Value;
-                                }
+
+                                this.VectorClock[clockId]++;
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has updated the clock, will notify all pending messages", operation, rand_id));
+                                Monitor.PulseAll(VectorClock);
                             }
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has updated the clock, will notify all pending messages", operation, rand_id));
-                            Monitor.PulseAll(VectorClock);
                             break;
+
                         }
                     }
                 }
