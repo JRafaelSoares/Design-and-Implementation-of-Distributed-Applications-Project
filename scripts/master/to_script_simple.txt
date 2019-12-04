@@ -1,0 +1,21 @@
+AddRoom Lisboa 2 room1
+AddRoom Porto 1 room2
+Server s1 tcp://localhost:3001/server1 1 200 300
+Wait 1000
+Server s2 tcp://localhost:3002/server2 1 200 300
+Wait 1000
+Server s3 tcp://localhost:3003/server3 1 200 300
+Wait 3000
+Client c1 tcp://localhost:4001/client1 tcp://localhost:3001/server1 to1.txt
+Wait 5000
+Client c2 tcp://localhost:4002/client2 tcp://localhost:3002/server2 to2.txt
+Wait 15000
+Status
+Wait 10000
+Status
+Wait 12000
+Status
+Wait 12000
+Client c3 tcp://localhost:4003/client3 tcp://localhost:3003/server3 to3.txt
+
+

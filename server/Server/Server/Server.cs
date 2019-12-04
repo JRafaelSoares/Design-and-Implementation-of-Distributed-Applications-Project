@@ -346,7 +346,7 @@ namespace MSDAD
             {
                 CheckFreeze();
                 SafeSleep();
-                Console.WriteLine(String.Format("Client with id {0} wants to close meeting with topic {1}", userId, topic));
+                Console.WriteLine(String.Format("[INFO][CLIENT-SERVER][CLOSE-MEETING] Client with id {0} wants to close meeting with topic {1}", userId, topic));
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
                     this.Meetings[topic].CurState = Meeting.State.Pending;
@@ -441,6 +441,7 @@ namespace MSDAD
             void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
                 CheckFreeze();
+                Console.WriteLine(String.Format("[INFO][CLOSE-MEETING][ORDERED] close meeting with topic {0}", topic));
                 //Total Order ensures we don't need to lock since only one close meeting happens at a time
                 Meetings[topic] = meeting;
 
