@@ -135,14 +135,17 @@ namespace MSDAD
                     if (invitees == null)
                     {
                         meeting = new Meeting(this.ClientId, topic, min_atendees, slots);
-                        }
+                    }
                     else
                     {
                         meeting = new MeetingInvitees(this.ClientId, topic, min_atendees, slots, invitees);
                     }
 
+                    CurrentServer.CreateMeeting(topic, meeting);
+
                     Meetings.Add(topic, meeting);
 
+            
                     gossipMeeting(CurrentServer.getGossipClients(ClientId), meeting, topic);
                 
                 } catch (System.Net.Sockets.SocketException e)
