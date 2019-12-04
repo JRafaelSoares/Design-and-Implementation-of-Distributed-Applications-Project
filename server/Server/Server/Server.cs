@@ -27,7 +27,7 @@ namespace MSDAD
 
             /*Server properties*/
             private readonly ConcurrentDictionary<String, Meeting> Meetings = new ConcurrentDictionary<string, Meeting>();
-            private readonly String ServerId;
+            private String ServerId;
             private readonly String ServerUrl;
             private readonly uint MaxFaults;
             private readonly int MinDelay;
@@ -80,7 +80,10 @@ namespace MSDAD
 
             /***************************************************/
 
-
+            /*********Properties for ViewSync****************/
+            public int TOMessageCounter = 0;
+            private ConcurrentDictionary<String, Tuple<String, object[]>> TOPending = new ConcurrentDictionary<string, Tuple<string, object[]>>();
+            /***************************************************/
 
 
 
@@ -327,7 +330,7 @@ namespace MSDAD
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT][FINISH] Client <id:{0} ; url:{1}> connected successfully, will give known servers urls", id, url));
                 //Give Known Servers to Client
                 Dictionary<string, string> tempServerNames = ServerNames.ToDictionary(entry => entry.Key, entry => entry.Value);
-                tempServerNames.Remove(ServerId);
+                //tempServerNames.Remove(ServerId);
                 return tempServerNames;
             }
 
@@ -576,7 +579,38 @@ namespace MSDAD
                 return this.ServerId;
             }
             /***********************************************************************************************************************/
-            /*************************************************View Synchrony******************************************************/
+            /*************************************************Total Order********************************************************/
+            /***********************************************************************************************************************/
+
+            void TotalOrder_Send(String operation, object[] args)
+            {
+                ViewSync_Send("TotalOrder_Pending", new object[] {TONextMessageId(), operation, args });
+            }
+
+            void IMSDADServerToServer.TotalOrder_Pending(String messageId, String operation, object[] args)
+            {
+                TOPending.TryAdd(messageId, new Tuple<string, object[]>(operation, args));
+
+                //if(I am leader)
+                if (true)
+                {
+                    ViewSync_Send("TotalOrder_Deliver", new object[] { messageId });
+                }
+            }
+
+            void IMSDADServerToServer.TotalOrder_Deliver(String messageId)
+            {
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
+                TOPending.TryRemove(messageId, out _);
+            }
+            private String TONextMessageId()
+            {
+                return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.TOMessageCounter));
+            }
+
+
+            /***********************************************************************************************************************/
+            /*************************************************View Synchrony********************************************************/
             /***********************************************************************************************************************/
 
             void ViewSync_Send(string operation, object[] args)
@@ -919,6 +953,52 @@ namespace MSDAD
                     }
                 }
             }
+
+            /***********************************************************************************************************************/
+            /*******************************************************Gossip***********************************************************/
+            /***********************************************************************************************************************/
+
+            List<ServerClient> IMSDADServer.getGossipClients(string clientID)
+            {
+                SafeSleep();
+                List<String> URLs = new List<String>();
+                List<ServerClient> clients = new List<ServerClient>();
+                String s;
+
+                while(URLs.Count < ClientURLs.Count/ 2)
+                {
+                    KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientID);
+
+                    s = t.Equals(null) ? null : t.Key.Url;
+
+                    if (s == null)
+                        return null;
+
+                    if (!URLs.Contains(s))
+                        URLs.Add(s);
+                }
+
+                foreach(String url in URLs)
+                {
+                    foreach(ServerClient client in ClientURLs.Keys.ToList())
+                    {
+                        if (client.Url.Equals(url))
+                        {
+                            clients.Add(client);
+                            break;
+                        }
+                    }
+                }
+                return clients;
+            }
+
+            String IMSDADServer.getServerID()
+            {
+                return ServerId;
+            }
+
         }
+
+
     }
 }

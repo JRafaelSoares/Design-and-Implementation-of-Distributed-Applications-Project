@@ -21,6 +21,7 @@ namespace MSDAD
             
             private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
             private String CurrentServerUrl;
+            private String serverId;
             private IMSDADServer CurrentServer;
             private readonly String ClientId;
             private readonly String ClientURL;
@@ -28,10 +29,10 @@ namespace MSDAD
             private Dictionary<String, Meeting> Meetings { get; set; } = new Dictionary<string, Meeting>();
             private static readonly Object CreateMeetingLock = new object();
 
-
             public Client(IMSDADServer server, String userId, String serverUrl, String ClientURL)
             {
                 this.CurrentServer = server;
+                this.serverId = server.getServerID();
                 this.ClientId = userId;
                 this.ClientURL = ClientURL;
                 this.milliseconds = 0;
@@ -57,15 +58,15 @@ namespace MSDAD
                     }
 
                 }
-                catch (System.Net.Sockets.SocketException e)
+               catch (System.Net.Sockets.SocketException)
                 {
                     this.ReconnectingClient();
                     this.ListMeetings();
                 }
-                catch (RemotingTimeoutException) {
+                /*catch (RemotingTimeoutException) {
                     this.ReconnectingClient();
                     this.ListMeetings();
-                } 
+                } */
 
             }
 
@@ -140,18 +141,9 @@ namespace MSDAD
                         meeting = new MeetingInvitees(this.ClientId, topic, min_atendees, slots, invitees);
                     }
 
-                    //Propagate Meeting
-                    HashSet<ServerClient> clients = CurrentServer.CreateMeeting(topic, meeting);
-                    
-                    foreach(ServerClient client in clients)
-                    {
-                        if (client.ClientId != ClientId)
-                        {
-                            IMSDADClientToClient otherClient = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
-                            otherClient.CreateMeeting(topic, meeting);
-                        }
-                    }
                     Meetings.Add(topic, meeting);
+
+                    gossipMeeting(CurrentServer.getGossipClients(ClientId), meeting, topic);
                 
                 } catch (System.Net.Sockets.SocketException e)
                 {
@@ -327,30 +319,64 @@ namespace MSDAD
 
             public void ReconnectingClient()
             {
-                Console.WriteLine("The server crashed, reconnecting to a new server");
-                KnownServers.Remove(CurrentServerUrl);
+                Console.WriteLine("The server " + CurrentServerUrl + " crashed, reconnecting to a new server");
+                Console.WriteLine("Known servers size before removing: " + KnownServers.Count);
+                foreach (String serverURl in KnownServers.Values)
+                {
+                    Console.WriteLine("I know this server: " + serverURl);
+                }
+
+                Console.WriteLine("Previous server id: " + serverId);
 
                 Random r = new Random();
-                int i = r.Next(0, KnownServers.Count);
-
+                
                 //Choose random server to connect to
-
-                Dictionary<string, string>.KeyCollection keyColl = KnownServers.Keys;
-                foreach (string s in keyColl)
+                String key = KnownServers.Keys.ToList()[r.Next(0, KnownServers.Count)];
+                CurrentServerUrl = KnownServers[key];
+                
+                try
                 {
-                    if (i != 0)
-                    {
-                        i--;
-                        continue;
-                    }
-                    CurrentServerUrl = KnownServers[s];
+                    Console.WriteLine("Trying to reconnect to: " + CurrentServerUrl);
+
+                    CurrentServer = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), CurrentServerUrl);
+                    KnownServers = CurrentServer.NewClient(ClientURL, ClientId);
+
+                   
+                    Console.WriteLine("The current server is now: " + CurrentServerUrl);
+
+                } catch (System.Net.Sockets.SocketException e)
+                {
+                    ReconnectingClient();
+
+                } /*catch (RemotingTimeoutException e)
+                {
+                    ReconnectingClient();
+                }*/
+            }
+
+            void gossipMeeting(List<ServerClient> clients, Meeting meeting, string topic)
+            {
+                if (clients == null)
+                {
+                    return;
                 }
-                CurrentServer = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), CurrentServerUrl);
-                KnownServers = CurrentServer.NewClient(ClientURL, ClientId);
 
-                Console.WriteLine("The current server is now: " + CurrentServerUrl);
+                foreach (ServerClient client in clients)
+                {
+                    IMSDADClientToClient c = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
+                    c.receiveGossipMeetings(meeting, topic);
+                }
+            }
 
+            void IMSDADClientToClient.receiveGossipMeetings(Meeting meeting, string topic)
+            {
+                if (!Meetings.ContainsKey(topic))
+                {
+                    Meetings.Add(topic, meeting);
+                    List<ServerClient> clients = CurrentServer.getGossipClients(ClientId);
 
+                    gossipMeeting(clients, meeting, topic);
+                }
             }
         }
     }

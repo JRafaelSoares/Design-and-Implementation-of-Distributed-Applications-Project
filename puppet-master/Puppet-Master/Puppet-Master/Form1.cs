@@ -165,6 +165,12 @@ namespace Puppet_Master
                 case "Crash":
                     Crash(items[1]);
                     break;
+                case "Freeze":
+                    Freeze(items[1]);
+                    break;
+                case "Unfreeze":
+                    Unfreeze(items[1]);
+                    break;
                 case "Wait":
                     Wait(Int32.Parse(items[1]));
                     break;
@@ -194,7 +200,6 @@ namespace Puppet_Master
 
         }
 
-        //Testar 
         private void Crash(string serverId)
         {
             try
@@ -208,6 +213,16 @@ namespace Puppet_Master
             {
                 System.Console.WriteLine("Could not locate server");
             }
+
+        }
+
+        private void Freeze(string serverId)
+        {
+
+        }
+
+        private void Unfreeze(string serverId)
+        {
 
         }
 

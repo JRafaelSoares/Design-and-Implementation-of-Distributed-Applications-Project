@@ -23,6 +23,8 @@ namespace MSDAD
             IDictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
             void CloseMeeting(String topic, String userId);
             String getRandomClient(String clientId);
+            List<ServerClient> getGossipClients(String ClientID);
+            String getServerID();
 
         }
 
@@ -130,6 +132,9 @@ namespace MSDAD
             void ViewSync_Deliver(string serverId, int clock, string operation, object[] args);
             void RecieveVectorClock(ConcurrentDictionary<String, int> clock);
             void BeginViewChange(String crashedId);
+            void TotalOrder_Pending(String messageId, String operation, object[] args);
+            void TotalOrder_Deliver(String messageId);
+
 
             ConcurrentDictionary<String, int> GetVectorClock();
 
@@ -139,6 +144,7 @@ namespace MSDAD
         {
             void CreateMeeting(String topic, Meeting meeting);
             Dictionary<String, Meeting> SendMeetings();
+            void receiveGossipMeetings(Meeting meeting, string topic);
         }
 
 
