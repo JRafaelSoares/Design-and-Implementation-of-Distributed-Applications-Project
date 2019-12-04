@@ -34,6 +34,7 @@ namespace MSDAD
             private readonly int MaxDelay;
             /****************************/
 
+
             private bool LeaderToken { get; set; }
             private static readonly Object CloseMeetingLock = new object();
             private static readonly Random random = new Random();
@@ -54,6 +55,10 @@ namespace MSDAD
             public ConcurrentDictionary<String, CountdownEvent> RBMessages = new ConcurrentDictionary<string, CountdownEvent>();
             public int RBMessageCounter = 0;
             /***********************************/
+
+            public Boolean FreezeFlag = false;
+            public Object FreezeLock = new object();
+            public int FreezeValue = 0;
 
             /*Properties for Fault Detection*/
             private readonly int maxFailures = 3;
@@ -260,23 +265,26 @@ namespace MSDAD
 
             void IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
+                CheckFreeze();
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][VS-SEND] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
                 ViewSync_Send("CreateMeeting", new object[] { topic, meeting });
 
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} broadcasted successfully", topic));
-                return;
+                ExitMethod();
             }
 
 
             void IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
             {
+                CheckFreeze();
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING] User {0} wants to join meeting with topic {1}", userId, topic));
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
                 //Meeting hasn't reached the server yet
                 if (!found)
                 {
                     Console.WriteLine(String.Format("[ERROR][CLIENT-TO-SERVER][JOIN-MEETING] Meeting with topic {0} hasn't reached this server yet, so user {1} must retry later", topic, userId));
+                    ExitMethod();
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
 
@@ -285,21 +293,22 @@ namespace MSDAD
                 ViewSync_Send("JoinMeeting", new object[] { topic, slots, userId, timestamp });
 
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][FINISH] User {0} joined meeting with topic {1} finished", userId, topic));
-                return;
+                ExitMethod();
             }
 
             IDictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
             {
+                CheckFreeze();
                 SafeSleep();
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS] Received List Meetings request");
                 ListMeetingsMerge(meetings);
-                //Give only relevant meetings
-                //FIXME REVIEW THIS
-                return this.Meetings.Where(x => meetings.ContainsKey(x.Key)).ToDictionary(dict => dict.Key, dict => dict.Value); ;
+                ExitMethod();
+                return this.Meetings.Where(x => meetings.ContainsKey(x.Key)).ToDictionary(dict => dict.Key, dict => dict.Value);
             }
 
             Dictionary<String, String> IMSDADServer.NewClient(string url, string id)
             {
+                CheckFreeze();
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][NEW-CLIENT] Received New Client connection request: client: <id:{0} ; url:{1}>", id, url);
 
                 ServerClient client = new ServerClient(url, id);
@@ -320,25 +329,62 @@ namespace MSDAD
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-CLIENT][FINISH] Client <id:{0} ; url:{1}> connected successfully, will give known servers urls", id, url));
                 //Give Known Servers to Client
                 Dictionary<string, string> tempServerNames = ServerNames.ToDictionary(entry => entry.Key, entry => entry.Value);
-                //tempServerNames.Remove(ServerId);
+                ExitMethod();
                 return tempServerNames;
             }
 
             String IMSDADServer.GetRandomClient(String clientId)
             {
+                CheckFreeze();
                 SafeSleep();
                 KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
+                ExitMethod();
                 return (t.Equals(default(KeyValuePair<ServerClient, byte>)))  ? null : t.Key.Url;
             }
 
             void IMSDADServer.CloseMeeting(string topic, string userId)
             {
+                CheckFreeze();
                 SafeSleep();
                 Console.WriteLine(String.Format("Client with id {0} wants to close meeting with topic {1}", userId, topic));
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
                     this.Meetings[topic].CurState = Meeting.State.Pending;
                     TotalOrder_Send("CloseMeeting", new object[] { topic, this.Meetings[topic] });
+                }
+                ExitMethod();
+            }
+
+            void CheckFreeze()
+            {
+                lock (FreezeLock)
+                {
+                    if (FreezeFlag)
+                    {
+                        FreezeValue++;
+                        Monitor.Wait(FreezeLock);
+                    }
+                }
+                
+
+            }
+
+            void ExitMethod()
+            {
+                lock (FreezeLock)
+                {
+                    if(FreezeFlag)
+                    {
+                        FreezeValue--;
+                    }
+                    if(FreezeValue == 0)
+                    {
+                        FreezeFlag = false;
+                    }
+                    else
+                    {
+                        Monitor.Pulse(FreezeLock);
+                    }
                 }
             }
 
@@ -368,11 +414,14 @@ namespace MSDAD
             }
             void IMSDADServerPuppet.Freeze()
             {
-                throw new NotImplementedException();
+                this.FreezeFlag = true;
             }
             void IMSDADServerPuppet.Unfreeze()
             {
-                throw new NotImplementedException();
+                lock (FreezeLock)
+                {
+                    Monitor.Pulse(FreezeLock);
+                }
             }
             void IMSDADServerPuppet.Status()
             {
@@ -391,6 +440,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
+                CheckFreeze();
                 //Total Order ensures we don't need to lock since only one close meeting happens at a time
                 Meetings[topic] = meeting;
 
@@ -403,6 +453,7 @@ namespace MSDAD
                     if (slots.Count == 0)
                     {
                         meeting.CurState = Meeting.State.Canceled;
+                        ExitMethod();
                         return;
                     }
 
@@ -424,18 +475,22 @@ namespace MSDAD
                     });
 
                     meeting.Close(slots[0], numUsers);
+                    ExitMethod();
                 }
             }
 
 
             void IMSDADServerToServer.Ping()
             {
+                CheckFreeze();
                 SafeSleep();
-                return;
+                ExitMethod();
             }
 
             void IMSDADServerToServer.JoinMeeting(String topic, List<String> slots, String userId, DateTime timestamp)
             {
+                CheckFreeze();
+
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][JOIN-MEETING] Join of user {0} to meeting with topic {1} reached this server", userId, topic));
                 bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
@@ -444,6 +499,7 @@ namespace MSDAD
                 {
                     Console.WriteLine(String.Format("[ERROR][SERVER-TO-SERVER][JOIN-MEETING] Join of user {0} to meeting with topic {1} " +
                         "cannot be processed as meeting as not reached the server", userId, topic));
+                    ExitMethod();
                     return;
                 }
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
@@ -451,6 +507,7 @@ namespace MSDAD
                     //See if Meeting as reached the server yet
                     if (meeting.CurState != Meeting.State.Open)
                     {
+                        ExitMethod();
                         return;
                     }
 
@@ -468,14 +525,16 @@ namespace MSDAD
                     meeting.AddUser(userId, timestamp, this.VectorClock);
                 }
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][JOIN-MEETING][FINISH] user {0} joined meeting with topic {1}", userId, topic));
-                return;
+                ExitMethod();
             }
 
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
+                CheckFreeze();
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][NEW-MEETING] Meeting with topic {0} reached server with id {1}", topic, this.ServerId));
                 Meetings.TryAdd(topic, meeting);
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} added to server with id {1}", topic, this.ServerId));
+                ExitMethod();
 
             }
 
@@ -483,13 +542,17 @@ namespace MSDAD
 
             void IMSDADServerToServer.NewClient(ServerClient client)
             {
+                CheckFreeze();
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][NEW-CLIENT][RELIABLE-BROADCAST] Broadcast of client <id:{0} ; url:{1}> reached server {2}", client.ClientId, client.Url, this.ServerId));
                 this.ClientURLs.TryAdd(client, new byte());
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][NEW-CLIENT][FINISH] Client <id:{0} ; url:{1}> added to server {2}", client.ClientId, client.Url, this.ServerId));
+                ExitMethod();
+
             }
 
             String IMSDADServerToServer.NewServer(String id, string url)
             {
+                CheckFreeze();
                 Console.WriteLine("[INFO][SERVER-TO-SERVER][NEW-SERVER] Trying to Connect to server at address {0}", url);
                 IMSDADServerToServer otherServer = (IMSDADServerToServer)Activator.GetObject(typeof(IMSDADServer), url);
                 if (otherServer != null)
@@ -510,8 +573,11 @@ namespace MSDAD
                 {
                     Console.WriteLine("[ERROR][SERVER-TO-SERVER][NEW-SERVER] Cannot connect to server at address {0}", url);
                 }
+                ExitMethod();
                 return this.ServerId;
             }
+
+             
             /***********************************************************************************************************************/
             /***************************************************Total Order*********************************************************/
             /***********************************************************************************************************************/
@@ -525,6 +591,7 @@ namespace MSDAD
 
             void IMSDADServerToServer.TotalOrder_Pending(String messageId, String operation, object[] args)
             {
+                CheckFreeze();
                 int rand_id = random.Next();
                 Console.WriteLine(String.Format("[TOTAL-ORDER][PENDING] Pending message for operation <{0};{1}>", operation, rand_id));
 
@@ -538,10 +605,12 @@ namespace MSDAD
                     Console.WriteLine(String.Format("[TOTAL-ORDER][LEADER][SEND] Sending message for operation <{0};{1}>", operation, rand_id));
                     ViewSync_Send("TotalOrder_Deliver", new object[] { messageId });
                 }
+                ExitMethod();
             }
 
             void IMSDADServerToServer.TotalOrder_Deliver(String messageId)
             {
+                CheckFreeze();
                 int rand_id = random.Next();
                 Console.WriteLine(String.Format("[TOTAL-ORDER][DELIVER] Recieved message for operation <{0};{1}>", TOPending[messageId].Item1, rand_id));
                 GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
@@ -549,15 +618,12 @@ namespace MSDAD
                 {
                     TOPending.TryRemove(messageId, out _);
                 }
+                ExitMethod();
             }
             private String TONextMessageId()
             {
                 return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.TOMessageCounter));
             }
-
-            //To know which one belongs where
-            //
-
 
             /***********************************************************************************************************************/
             /*************************************************View Synchrony********************************************************/
@@ -613,6 +679,8 @@ namespace MSDAD
 
             void IMSDADServerToServer.NewView(String crashedId)
             {
+                CheckFreeze();
+
                 Console.WriteLine(String.Format("[VIEW-SYNCHRONY][NEW-VIEW] Received new view request because server {0} crashed", crashedId));
 
                 if (!ServerView.ContainsKey(crashedId))
@@ -700,21 +768,26 @@ namespace MSDAD
                     PingDelegate remoteDel = new PingDelegate(server.StartSendingNewView);
                     remoteDel.BeginInvoke(null, null);
                 }
+
+                ExitMethod();
             }
 
             ConcurrentDictionary<String, int> IMSDADServerToServer.GetVectorClock()
             {
+                CheckFreeze();
                 Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][GET] Will give my vector clock");
                 SafeSleep();
                 lock (this.VectorClock)
                 {
                     this.ViewClock = new ConcurrentDictionary<string, int>(this.VectorClock);
+                    ExitMethod();
                     return this.VectorClock;
                 }
             }
 
             void IMSDADServerToServer.RecieveVectorClock(ConcurrentDictionary<String, int> maxClock)
             {
+                CheckFreeze();
                 Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Received the max vector clock, ready to change view");
                 SafeSleep();
                 while (true)
@@ -756,11 +829,12 @@ namespace MSDAD
                         }
                     }
                 }
-                return;
+                ExitMethod();
             }
 
             void IMSDADServerToServer.StartSendingNewView()
             {
+                CheckFreeze();
                 CalculateNewLeader();
                 List<String> pendings = this.TOPending.Keys.ToList();
                 pendings.Sort();
@@ -775,10 +849,17 @@ namespace MSDAD
                 {
                     Monitor.PulseAll(VSSendLock);
                 }
+                ExitMethod();
             }
 
             void IMSDADServerToServer.BeginViewChange(String crashedId)
             {
+                CheckFreeze();
+                if (this.ServerId.Equals(crashedId))
+                {
+                    Console.WriteLine("[VIEW-SYNC][VIEW-CHANGE-BEGIN] I am out of the View");
+                    ((IMSDADServerPuppet)this).Crash();
+                }
                 this.ServerView.TryRemove(crashedId, out _);
                 this.ServerNames.TryRemove(crashedId, out _);
                 lock (VSSendLock)
@@ -791,6 +872,7 @@ namespace MSDAD
                     Console.WriteLine("[VIEW-SYNC][VIEW-CHANGE-BEGIN] Can no longer deliver messages");
                     this.ChangeViewFlagDeliver = true;
                 }
+                ExitMethod();
 
             }
 
@@ -997,6 +1079,7 @@ namespace MSDAD
 
             List<ServerClient> IMSDADServer.GetGossipClients(string clientID)
             {
+                CheckFreeze();
                 SafeSleep();
                 List<String> URLs = new List<String>();
                 List<ServerClient> clients = new List<ServerClient>();
@@ -1026,11 +1109,14 @@ namespace MSDAD
                         }
                     }
                 }
+                ExitMethod();
                 return clients;
             }
 
             String IMSDADServer.GetServerID()
             {
+                CheckFreeze();
+                ExitMethod();
                 return ServerId;
             }
 
