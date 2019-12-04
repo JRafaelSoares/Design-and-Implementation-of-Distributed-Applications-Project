@@ -17,7 +17,7 @@ namespace MSDAD
         class Server : MarshalByRefObject, IMSDADServer, IMSDADServerPuppet, IMSDADServerToServer
         {
             /*************************************************************************************************************/
-            /*****************************************************Properties*********************************************/
+            /******************************************************Properties*********************************************/
             /***********************************************************************************************************/
             /*System members*/
             private ConcurrentDictionary<String, IMSDADServerToServer> ServerView = new ConcurrentDictionary<String, IMSDADServerToServer>();
@@ -316,7 +316,7 @@ namespace MSDAD
             {
                 SafeSleep();
                 KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
-                return t.Equals(null) ? t.Key.Url : null;
+                return (t.Equals(default(KeyValuePair<ServerClient, byte>)))  ? null : t.Key.Url;
             }
 
             void IMSDADServer.CloseMeeting(string topic, string userId)

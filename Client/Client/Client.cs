@@ -64,10 +64,6 @@ namespace MSDAD
                     this.ReconnectingClient();
                     this.ListMeetings();
                 }
-                /*catch (RemotingTimeoutException) {
-                    this.ReconnectingClient();
-                    this.ListMeetings();
-                } */
 
             }
 
@@ -94,11 +90,7 @@ namespace MSDAD
                     this.ReconnectingClient();
                     this.JoinMeeting(topic, slots);
                 }
-                catch (RemotingTimeoutException)
-                {
-                    this.ReconnectingClient();
-                    this.JoinMeeting(topic, slots);
-                } 
+
             }
 
              private void CloseMeeting(String topic)
@@ -117,11 +109,6 @@ namespace MSDAD
                     this.ReconnectingClient();
                     this.CloseMeeting(topic);
 
-                }
-                catch (RemotingTimeoutException)
-                {
-                    this.ReconnectingClient();
-                    this.CloseMeeting(topic);
                 }
 
             }
@@ -143,10 +130,7 @@ namespace MSDAD
                     }
 
                     CurrentServer.CreateMeeting(topic, meeting);
-
                     Meetings.Add(topic, meeting);
-
-            
                     gossipMeeting(CurrentServer.GetGossipClients(ClientId), meeting, topic);
                 
                 } catch (System.Net.Sockets.SocketException)
@@ -155,11 +139,7 @@ namespace MSDAD
                     this.CreateMeeting(topic, min_atendees, slots, invitees);
                     
                 } 
-                catch (RemotingTimeoutException) {
-                    this.ReconnectingClient();
-                    this.CreateMeeting(topic, min_atendees, slots, invitees);
 
-                }
                 catch (MSDAD.Shared.ServerException e)
                 {
                     Console.WriteLine(e.GetErrorMessage());
@@ -270,7 +250,6 @@ namespace MSDAD
                 IMSDADServer server = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), args[3]);
                 Console.WriteLine("This is the first server I'm connecting to!" + args[3]);
 
-
                 if (server == null)
                 {
                     System.Console.WriteLine("Server could not be contacted");
@@ -296,7 +275,6 @@ namespace MSDAD
                     else
                     {
                         Console.WriteLine("NO OTHER CLIENT IN THE SYSTEM");
-
                     }
 
                     if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + args[4]))
@@ -329,38 +307,22 @@ namespace MSDAD
             public void ReconnectingClient()
             {
                 Console.WriteLine("The server " + CurrentServerUrl + " crashed, reconnecting to a new server");
-                Console.WriteLine("Known servers size before removing: " + KnownServers.Count);
-                foreach (String serverURl in KnownServers.Values)
-                {
-                    Console.WriteLine("I know this server: " + serverURl);
-                }
 
-                Console.WriteLine("Previous server id: " + serverId);
-
-                Random r = new Random();
-                
                 //Choose random server to connect to
+                Random r = new Random();
                 String key = KnownServers.Keys.ToList()[r.Next(0, KnownServers.Count)];
                 CurrentServerUrl = KnownServers[key];
                 
                 try
                 {
-                    Console.WriteLine("Trying to reconnect to: " + CurrentServerUrl);
-
+                    Console.WriteLine("Trying to reconnect this server: " + CurrentServerUrl);
                     CurrentServer = (IMSDADServer)Activator.GetObject(typeof(IMSDADServer), CurrentServerUrl);
                     KnownServers = CurrentServer.NewClient(ClientURL, ClientId);
-
-                   
                     Console.WriteLine("The current server is now: " + CurrentServerUrl);
 
-                } catch (System.Net.Sockets.SocketException)
-                {
+                } catch (System.Net.Sockets.SocketException) {
                     ReconnectingClient();
-
-                } /*catch (RemotingTimeoutException e)
-                {
-                    ReconnectingClient();
-                }*/
+                } 
             }
 
             void gossipMeeting(List<ServerClient> clients, Meeting meeting, string topic)
@@ -381,6 +343,7 @@ namespace MSDAD
             {
                 if (!Meetings.ContainsKey(topic))
                 {
+                    Console.WriteLine("I didn't have that meeting");
                     Meetings.Add(topic, meeting);
                     List<ServerClient> clients = CurrentServer.GetGossipClients(ClientId);
 
