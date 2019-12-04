@@ -39,6 +39,8 @@ namespace MSDAD
             private static readonly Random random = new Random();
 
             /*Delegates for Async calls*/
+            public delegate void SendVectorClockDelegate(ConcurrentDictionary<String, int> clock);
+            public delegate ConcurrentDictionary<String, int> GetVectorClockDelegate();
             public delegate ConcurrentDictionary<String, Meeting> ListAsyncDelegate();
             public delegate Meeting RemoteAsyncDelegate(String topic);
             public delegate void JoinAsyncDelegate(String topic, List<string> slots, String userId, DateTime timestamp);
@@ -56,7 +58,7 @@ namespace MSDAD
             private readonly int maxFailures = 3;
             private TimeSpan timeout
             {
-               get
+                get
                 {
                     return TimeSpan.FromMilliseconds((MaxDelay * 2) + 1000);
                 }
@@ -65,8 +67,22 @@ namespace MSDAD
             private ConcurrentDictionary<String, TimeSpan> Timeouts = new ConcurrentDictionary<String, TimeSpan>();
             /**********************************/
 
-            /*********Propertiesfor Causal Order****************/
+            /*********Properties for Causal Order****************/
             private ConcurrentDictionary<String, int> VectorClock = new ConcurrentDictionary<string, int>();
+            /***************************************************/
+
+            /*********Properties for ViewSync****************/
+            private bool ChangeViewFlag = false;
+            private ConcurrentDictionary<Tuple<String, int>, Tuple<string, object[]>> DeliverMessages = new ConcurrentDictionary<Tuple<string, int>, Tuple<string, object[]>>();
+            private List<Tuple<String, object[]>> SendMessages = new List<Tuple<string, object[]>>();
+            private object VSLock = new object();
+            private object VSSendLock = new object();
+
+            /***************************************************/
+
+            /*********Properties for ViewSync****************/
+            public int TOMessageCounter = 0;
+            private ConcurrentDictionary<String, Tuple<String, object[]>> TOPending = new ConcurrentDictionary<string, Tuple<string, object[]>>();
             /***************************************************/
 
 
@@ -258,12 +274,12 @@ namespace MSDAD
             {
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][CAUSAL-SEND] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
-                Send_CausalOrder("CreateMeeting", new object[] { topic, meeting });
+                ViewSync_Send("CreateMeeting", new object[] { topic, meeting });
                 //this.RB_Broadcast(RBNextMessageId(), "CreateMeeting", new object[] { topic, meeting });
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} broadcasted successfully", topic));
                 return this.GetMeetingInvitees(this.Meetings[topic]);
             }
-            
+
             void IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
             {
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING] User {0} wants to join meeting with topic {1}", userId, topic));
@@ -274,55 +290,24 @@ namespace MSDAD
                     Console.WriteLine(String.Format("[ERROR][CLIENT-TO-SERVER][JOIN-MEETING] Meeting with topic {0} hasn't reached this server yet, so user {1} must retry later", topic, userId));
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
-                //FIXME SEE IF RB_SEND CALLS ONE SELF
 
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][CAUSAL-SEND] Propagate join of user {0} to meeting with topic {1} to {2} servers", userId, topic, this.MaxFaults));
 
-                Send_CausalOrder("JoinMeeting", new object[] { topic, slots, userId, timestamp });
+                ViewSync_Send("JoinMeeting", new object[] { topic, slots, userId, timestamp });
 
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][FINISH] User {0} joined meeting with topic {1} finished", userId, topic));
                 return;
             }
-            
+
             IDictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
             {
                 //FIXME JUST MERGE AND RETURN
                 SafeSleep();
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS] Received List Meetings request");
                 ListMeetingsMerge(meetings);
-
-                CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS][QUERY] Will query {0} servers before return", this.MaxFaults));
-
-                foreach (IMSDADServerToServer otherServer in this.ServerView.Values)
-                {
-                    ListAsyncDelegate RemoteDel = new ListAsyncDelegate(otherServer.GetMeetings);
-                    AsyncCallback RemoteCallback = new AsyncCallback(ar =>
-                    {
-                        ListAsyncDelegate del = (ListAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-                        ConcurrentDictionary<String, Meeting> serverMeeting = del.EndInvoke(ar);
-                        lock (latch)
-                        {
-                            //Only merge meetings for f servers, then return
-                            if (!latch.IsSet)
-                            {
-
-                                Console.WriteLine(String.Format("[ACK][CLIENT-TO-SERVER][LIST-MEETINGS] Ack of Get Meetings only {0} to go", latch.CurrentCount - 1));
-                                ListMeetingsMerge(serverMeeting);
-                                latch.Signal();
-                            }
-                        }
-                    }
-                    );
-                    IAsyncResult RemAr = RemoteDel.BeginInvoke(RemoteCallback, null);
-                }
-                latch.Wait();
-                //Cannot dispose latch because callback uses it
-
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS][FINISH] List meetings query finished", this.MaxFaults));
                 return this.Meetings;
             }
-            
+
             Dictionary<String, String> IMSDADServer.NewClient(string url, string id)
             {
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][NEW-CLIENT] Received New Client connection request: client: <id:{0} ; url:{1}>", id, url);
@@ -348,14 +333,14 @@ namespace MSDAD
                 //tempServerNames.Remove(ServerId);
                 return tempServerNames;
             }
-            
+
             String IMSDADServer.getRandomClient(String clientId)
             {
                 SafeSleep();
                 KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
                 return t.Equals(null) ? t.Key.Url : null;
             }
-            
+
             void IMSDADServer.CloseMeeting(string topic, string userId)
             {
                 SafeSleep();
@@ -505,15 +490,12 @@ namespace MSDAD
                     Console.WriteLine(String.Format("[ERROR][SERVER-TO-SERVER][JOIN-MEETING] Join of user {0} to meeting with topic {1} " +
                         "cannot be processed as meeting as not reached the server", userId, topic));
                     return;
-                    //throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
 
                 //See if Meeting as reached the server yet
                 if (meeting.CurState != Meeting.State.Open)
                 {
                     return;
-                    //FIXME Maybe just return since this is called by another server?
-                    //throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
                 //Join Client to Meeting
@@ -550,13 +532,6 @@ namespace MSDAD
                 }
             }
 
-            //Aux functions for list meetings
-            ConcurrentDictionary<String, Meeting> IMSDADServerToServer.GetMeetings()
-            {
-                SafeSleep();
-                Console.WriteLine("[INFO][SERVER-TO-SERVER][LIST-MEETINGS][FINISH] Got request to send my meetings");
-                return Meetings;
-            }
 
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
@@ -603,7 +578,203 @@ namespace MSDAD
                 }
                 return this.ServerId;
             }
+            /***********************************************************************************************************************/
+            /*************************************************Total Order********************************************************/
+            /***********************************************************************************************************************/
 
+            void TotalOrder_Send(String operation, object[] args)
+            {
+                ViewSync_Send("TotalOrder_Pending", new object[] {TONextMessageId(), operation, args });
+            }
+
+            void IMSDADServerToServer.TotalOrder_Pending(String messageId, String operation, object[] args)
+            {
+                TOPending.TryAdd(messageId, new Tuple<string, object[]>(operation, args));
+
+                //if(I am leader)
+                if (true)
+                {
+                    ViewSync_Send("TotalOrder_Deliver", new object[] { messageId });
+                }
+            }
+
+            void IMSDADServerToServer.TotalOrder_Deliver(String messageId)
+            {
+                GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
+                TOPending.TryRemove(messageId, out _);
+            }
+            private String TONextMessageId()
+            {
+                return String.Format("{0}-{1}", this.ServerId, Interlocked.Increment(ref this.TOMessageCounter));
+            }
+
+
+            /***********************************************************************************************************************/
+            /*************************************************View Synchrony********************************************************/
+            /***********************************************************************************************************************/
+
+            void ViewSync_Send(string operation, object[] args)
+            {
+                int rand_id = random.Next();
+
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][SEND] Send message for operation <{0};{1}>", operation, rand_id));
+                lock (VSSendLock)
+                {
+                    while (this.ChangeViewFlag)
+                    {
+                        Console.WriteLine(String.Format("[VIEW-SYNCHRONY][SEND] Cannot proceed with operation <{0};{1}> as there is a view change in progress, must wait", operation, rand_id));
+                        Monitor.Wait(this.VSSendLock);
+                        Console.WriteLine(String.Format("[VIEW-SYNCHRONY][SEND] Operation <{0};{1}> has been awaken", operation, rand_id));
+                    }
+                }
+
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][SEND] operation <{0};{1}> can proceed as there is no view change in progress", operation, rand_id));
+                ConcurrentDictionary<String, int> vec;
+                lock (this.VectorClock)
+                {
+                    this.VectorClock[this.ServerId]++;
+                    vec = new ConcurrentDictionary<String, int>(this.VectorClock);
+                }
+                Send_CausalOrder(vec, "ViewSync_Deliver", new object[] { this.ServerId, this.VectorClock[this.ServerId] + 1, operation, args });
+            }
+
+            void IMSDADServerToServer.ViewSync_Deliver(string serverId, int clock, string operation, object[] args)
+            {
+                int rand_id = random.Next();
+                
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> to be delivered", operation, rand_id));
+                if (this.ChangeViewFlag)
+                {
+                    Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> cannot be delivered as there is a view change in progress, just add to pending list", operation, rand_id));
+                    lock (VSLock)
+                    {
+                        DeliverMessages.TryAdd(new Tuple<string, int>(serverId, clock), new Tuple<string, object[]>(operation, args));
+                        Monitor.PulseAll(VSLock);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine(String.Format("[VIEW-SYNCHRONY][DELIVER] Operation <{0};{1}> is being delivered", operation, rand_id));
+                    GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
+                }
+            }
+
+            void IMSDADServerToServer.NewView(String crashedId)
+            {
+                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][NEW-VIEW] Received new view request because server {0} crashed", crashedId));
+
+                if (!ServerView.ContainsKey(crashedId))
+                {
+                    Console.WriteLine(String.Format("[VIEW-SYNCHRONY][NEW-VIEW] Already know server {0} crashed, so no view will be changed", crashedId));
+                    return;
+                }
+
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Will change view after server {0} crashed", crashedId);
+                ServerView.TryRemove(crashedId, out _);
+
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Send request to stop the message exchange");
+                ViewSync_Send("BeginViewChange", new object[] { crashedId });
+
+
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY] Begin Compute Max Clock");
+                ConcurrentDictionary<String, int> maxClock = new ConcurrentDictionary<String, int>(this.VectorClock);
+
+                CountdownEvent latch = new CountdownEvent(this.ServerView.Count);
+
+                foreach (IMSDADServerToServer server in this.ServerView.Values)
+                {
+                    GetVectorClockDelegate remoteDel = new GetVectorClockDelegate(server.GetVectorClock);
+                    AsyncCallback RemoteCallBack = new AsyncCallback(ar =>
+                    {
+                        GetVectorClockDelegate del = (GetVectorClockDelegate)((AsyncResult)ar).AsyncDelegate;
+                        ConcurrentDictionary<String, int> clock = del.EndInvoke(ar);
+
+                        foreach (KeyValuePair<String, int> entry in clock)
+                        {
+                            if (entry.Value > maxClock[entry.Key])
+                            {
+                                maxClock[entry.Key] = entry.Value;
+                            }
+                        }
+
+                        latch.Signal();
+                        Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY][ACK] Only {0} acks to go before query is complete", latch.CurrentCount);
+
+                    });
+                    IAsyncResult RemAr = remoteDel.BeginInvoke(RemoteCallBack, null);
+                }
+                latch.Wait();
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY] Query for view change is complete", latch.CurrentCount);
+
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY] Query to propagate max clock");
+                foreach (IMSDADServerToServer server in this.ServerView.Values)
+                {
+                    SendVectorClockDelegate remoteDel = new SendVectorClockDelegate(server.RecieveVectorClock);
+                    IAsyncResult RemAr = remoteDel.BeginInvoke(maxClock, null, null);
+                }
+
+                Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY] Query to propagate max clock finished, view changed");
+                this.ChangeViewFlag = false;
+            }
+
+            ConcurrentDictionary<String, int> IMSDADServerToServer.GetVectorClock()
+            {
+                Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][GET] Will give my vector clock");
+                SafeSleep();
+                return this.VectorClock;
+            }
+
+            void IMSDADServerToServer.RecieveVectorClock(ConcurrentDictionary<String, int> maxClock)
+            {
+                Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Received the max vector clock, ready to change view");
+                SafeSleep();
+                while (true)
+                {
+                    lock (VSLock)
+                    {
+                        Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Compute missing messages");
+                        List<Tuple<String, int>> missingMessages = new List<Tuple<string, int>>();
+                        foreach (String id in VectorClock.Keys)
+                        {
+                            if (VectorClock[id] < maxClock[id])
+                            {
+                                for (int i = VectorClock[id] + 1; i <= maxClock[id]; i++)
+                                {
+                                    Console.WriteLine(String.Format("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Missing message <{0},{1}>", id, i));
+                                    missingMessages.Add(new Tuple<string, int>(id, i));
+                                }
+                            }
+                        }
+                        if (missingMessages.Except(DeliverMessages.Keys).Any())
+                        {
+                            Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Wait for missing messages");
+                            Monitor.Wait(VSLock);
+                        }
+                        else
+                        {
+                            Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] No missing messages, must just deliver the messages and change the view");
+                            foreach (Tuple<String, int> key in missingMessages)
+                            {
+                                Console.WriteLine(String.Format("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Deliver message <{0},{1}>", key.Item1, key.Item2));
+                                GetType().GetInterface("IMSDADServerToServer").GetMethod(DeliverMessages[key].Item1).Invoke(this, DeliverMessages[key].Item2);
+                            }
+                            DeliverMessages.Clear();
+                            this.ChangeViewFlag = false;
+                            Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Changed view, wake up everyone waiting");
+                            Monitor.PulseAll(VSSendLock);
+                            break;
+                        }
+                    }
+
+                }
+                return;
+            }
+
+            void IMSDADServerToServer.BeginViewChange(String crashedId)
+            {
+                this.ServerView.TryRemove(crashedId, out _);
+                this.ChangeViewFlag = true;
+            }
             /***********************************************************************************************************************/
             /*************************************************Failure Detector******************************************************/
             /***********************************************************************************************************************/
@@ -625,7 +796,6 @@ namespace MSDAD
                             Timeouts[pair.Key] = TimeSpan.FromMilliseconds(Timeouts[pair.Key].TotalMilliseconds + 500);
                             Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " did not ping back, happened {0} times, next timeout: {1} miliseconds",
                                                                                                 CountFails[pair.Key], Timeouts[pair.Key].TotalMilliseconds);
-
                         }
                         else
                         {
@@ -637,11 +807,21 @@ namespace MSDAD
                         if (CountFails[pair.Key] == maxFailures)
                         {
                             Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " failed");
-                            ServerView.TryRemove(pair.Key, out _);
+                            List<string> servers = ServerView.Keys.Where(x => x != pair.Key).ToList();
+                            servers.Sort();
+                            String leader = servers.First();
+                            if (leader.CompareTo(ServerId) > 0)
+                            {
+                                Console.WriteLine("[FAILURE-DETECTOR] I am leader of view change after " + pair.Key + " crashed");
+                                ((IMSDADServerToServer)this).NewView(pair.Key);
+                            }
+                            else
+                            {
+                                Console.WriteLine("[FAILURE-DETECTOR] Contact leader of view change after " + pair.Key + " crashed, which is server " + pair.Key);
+                                ServerView[leader].NewView(pair.Key);
+                            }
                         }
-
                     }
-                    Thread.Sleep(1000 * 10);
                 }
             }
 
@@ -650,14 +830,9 @@ namespace MSDAD
             /*************************************************Causal Order Broadcast************************************************/
             /***********************************************************************************************************************/
 
-            void Send_CausalOrder(string operation, object[] args)
+            void Send_CausalOrder(ConcurrentDictionary<String, int> vec, string operation, object[] args)
             {
-                ConcurrentDictionary<String, int> vec;
-                lock (this.VectorClock)
-                {
-                    this.VectorClock[this.ServerId]++;
-                    vec = new ConcurrentDictionary<String, int>(this.VectorClock);
-                }
+
                 Console.WriteLine(String.Format("[CAUSAL-ORDER] Send message for operation {0} with clock {1}", operation, vec));
                 RB_Broadcast(RBNextMessageId(), "Deliver_CausalOrder", new object[] { vec, operation, args });
 
@@ -672,7 +847,6 @@ namespace MSDAD
                 {
                     lock (VectorClock)
                     {
-
                         int clockDiference = 0;
                         string clockId = "";
                         foreach (String id in VectorClock.Keys)
@@ -690,17 +864,17 @@ namespace MSDAD
                         {
                             Console.WriteLine(String.Format("[CAUSAL-ORDER] Still need to wait for messages as clocks do not match for operation {0} with id {1} (is {2} and must be -1)", operation, rand_id, clockDiference));
                             Monitor.Wait(VectorClock);
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} has been notified of changing of clocks, will recalculate diference", operation, rand_id));
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has been notified of changing of clocks, will recalculate diference", operation, rand_id));
 
                         }
                         else
                         {
-                            Console.WriteLine(String.Format("[CAUSAL-ORDER] operation {0} with id {1} can now be executed", operation, rand_id));
+                            Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} can now be executed", operation, rand_id));
                             //For the case he sends to itself don't need to increment
                             if (clockDiference != 0)
                             {
                                 VectorClock[clockId]++;
-                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Message with id {0} has updated the clock, will notify all pending messages", operation, rand_id));
+                                Console.WriteLine(String.Format("[CAUSAL-ORDER] Operation {0} with id {1} has updated the clock, will notify all pending messages", operation, rand_id));
                                 Monitor.PulseAll(VectorClock);
                             }
                             break;
