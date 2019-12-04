@@ -77,6 +77,8 @@ namespace MSDAD
             private bool ChangeViewFlagDeliver = false;
 
             private ConcurrentDictionary<Tuple<String, int>, Tuple<string, object[]>> DeliverMessages = new ConcurrentDictionary<Tuple<string, int>, Tuple<string, object[]>>();
+            private ConcurrentDictionary<String, int> ViewClock = new ConcurrentDictionary<string, int>();
+
             private object VSDeliverLock = new object();
             private object VSSendLock = new object();
 
@@ -662,14 +664,8 @@ namespace MSDAD
 
                 Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW] Everyone has new view");
 
+                ((IMSDADServerToServer)this).StartSendingNewView();
 
-                this.ChangeViewFlagDeliver = false;
-                this.ChangeViewFlagSend = false;
-                lock (VSSendLock)
-                {
-                    Monitor.PulseAll(VSSendLock);
-
-                }
                 foreach (IMSDADServerToServer server in this.ServerView.Values)
                 {
                     PingDelegate remoteDel = new PingDelegate(server.StartSendingNewView);
@@ -683,6 +679,7 @@ namespace MSDAD
                 SafeSleep();
                 lock (this.VectorClock)
                 {
+                    this.ViewClock = new ConcurrentDictionary<string, int>(this.VectorClock);
                     return this.VectorClock;
                 }
             }
@@ -697,11 +694,11 @@ namespace MSDAD
                     {
                         Console.WriteLine("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Compute missing messages");
                         List<Tuple<String, int>> missingMessages = new List<Tuple<string, int>>();
-                        foreach (String id in VectorClock.Keys)
+                        foreach (String id in ViewClock.Keys)
                         {
-                            if (VectorClock[id] < maxClock[id])
+                            if (ViewClock[id] < maxClock[id])
                             {
-                                for (int i = VectorClock[id] + 1; i <= maxClock[id]; i++)
+                                for (int i = ViewClock[id] + 1; i <= maxClock[id]; i++)
                                 {
                                     Console.WriteLine(String.Format("[VIEW-SYNCHRONY][VECTOR-CLOCK][RECEIVE] Missing message <{0},{1}>", id, i));
                                     missingMessages.Add(new Tuple<string, int>(id, i));
