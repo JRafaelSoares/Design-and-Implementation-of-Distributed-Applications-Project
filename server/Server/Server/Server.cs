@@ -287,8 +287,7 @@ namespace MSDAD
                     Console.WriteLine(String.Format("[ERROR][CLIENT-TO-SERVER][JOIN-MEETING] Meeting with topic {0} hasn't reached this server yet, so user {1} must retry later", topic, userId));
                     throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
-                //FIXME SEE IF RB_SEND CALLS ONE SELF
-
+                
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING][CAUSAL-SEND] Propagate join of user {0} to meeting with topic {1} to {2} servers", userId, topic, this.MaxFaults));
 
                 ViewSync_Send("JoinMeeting", new object[] { topic, slots, userId, timestamp });
@@ -303,36 +302,6 @@ namespace MSDAD
                 SafeSleep();
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS] Received List Meetings request");
                 ListMeetingsMerge(meetings);
-
-                CountdownEvent latch = new CountdownEvent((int)this.MaxFaults);
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS][QUERY] Will query {0} servers before return", this.MaxFaults));
-
-                foreach (IMSDADServerToServer otherServer in this.ServerView.Values)
-                {
-                    ListAsyncDelegate RemoteDel = new ListAsyncDelegate(otherServer.GetMeetings);
-                    AsyncCallback RemoteCallback = new AsyncCallback(ar =>
-                    {
-                        ListAsyncDelegate del = (ListAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-                        ConcurrentDictionary<String, Meeting> serverMeeting = del.EndInvoke(ar);
-                        lock (latch)
-                        {
-                            //Only merge meetings for f servers, then return
-                            if (!latch.IsSet)
-                            {
-
-                                Console.WriteLine(String.Format("[ACK][CLIENT-TO-SERVER][LIST-MEETINGS] Ack of Get Meetings only {0} to go", latch.CurrentCount - 1));
-                                ListMeetingsMerge(serverMeeting);
-                                latch.Signal();
-                            }
-                        }
-                    }
-                    );
-                    IAsyncResult RemAr = RemoteDel.BeginInvoke(RemoteCallback, null);
-                }
-                latch.Wait();
-                //Cannot dispose latch because callback uses it
-
-                Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS][FINISH] List meetings query finished", this.MaxFaults));
                 return this.Meetings;
             }
 
@@ -518,15 +487,12 @@ namespace MSDAD
                     Console.WriteLine(String.Format("[ERROR][SERVER-TO-SERVER][JOIN-MEETING] Join of user {0} to meeting with topic {1} " +
                         "cannot be processed as meeting as not reached the server", userId, topic));
                     return;
-                    //throw new NoSuchMeetingException("Meeting specified does not exist on this server");
                 }
 
                 //See if Meeting as reached the server yet
                 if (meeting.CurState != Meeting.State.Open)
                 {
                     return;
-                    //FIXME Maybe just return since this is called by another server?
-                    //throw new CannotJoinMeetingException("Meeting is no longer open");
                 }
 
                 //Join Client to Meeting
@@ -563,14 +529,7 @@ namespace MSDAD
                 }
             }
 
-            //Aux functions for list meetings
-            ConcurrentDictionary<String, Meeting> IMSDADServerToServer.GetMeetings()
-            {
-                SafeSleep();
-                Console.WriteLine("[INFO][SERVER-TO-SERVER][LIST-MEETINGS][FINISH] Got request to send my meetings");
-                return Meetings;
-            }
-
+            
             void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
             {
                 Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][NEW-MEETING] Meeting with topic {0} reached server with id {1}", topic, this.ServerId));
@@ -771,7 +730,6 @@ namespace MSDAD
                             Timeouts[pair.Key] = TimeSpan.FromMilliseconds(Timeouts[pair.Key].TotalMilliseconds + 500);
                             Console.WriteLine("[FAILURE-DETECTOR] Server " + pair.Key + " did not ping back, happened {0} times, next timeout: {1} miliseconds",
                                                                                                 CountFails[pair.Key], Timeouts[pair.Key].TotalMilliseconds);
-
                         }
                         else
                         {
@@ -788,7 +746,6 @@ namespace MSDAD
                             ServerView[servers.First()].NewView(pair.Key);
                         }
                     }
-                    Thread.Sleep(1000 * 10);
                 }
             }
 
@@ -814,7 +771,6 @@ namespace MSDAD
                 {
                     lock (VectorClock)
                     {
-
                         int clockDiference = 0;
                         string clockId = "";
                         foreach (String id in VectorClock.Keys)
@@ -912,7 +868,6 @@ namespace MSDAD
                     }
                 }
             }
-
         }
     }
 }
