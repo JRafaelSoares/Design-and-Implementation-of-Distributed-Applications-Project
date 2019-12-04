@@ -87,9 +87,9 @@ namespace MSDAD
 
 
 
-            /**********************************************************************************************************************/
-            /****************************************************Functions*******************************************************/
-            /********************************************************************************************************************/
+            /***********************************************************************************************************************/
+            /****************************************************Functions*********************************************************/
+            /*********************************************************************************************************************/
 
             static void Main(string[] args)
             {
@@ -246,15 +246,16 @@ namespace MSDAD
             /*************************************************Client Server*********************************************************/
             /***********************************************************************************************************************/
 
-            HashSet<ServerClient> IMSDADServer.CreateMeeting(string topic, Meeting meeting)
+            void IMSDADServer.CreateMeeting(string topic, Meeting meeting)
             {
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][VS-SEND] Broadcast meeting with topic {0} to other servers", topic));
                 //FIXME We should make it causally ordered
                 ViewSync_Send("CreateMeeting", new object[] { topic, meeting });
 
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][NEW-MEETING][FINISH] Meeting with topic {0} broadcasted successfully", topic));
-                return this.GetMeetingInvitees(this.Meetings[topic]);
+                return;
             }
+
 
             void IMSDADServer.JoinMeeting(string topic, List<string> slots, string userId, DateTime timestamp)
             {
@@ -277,11 +278,12 @@ namespace MSDAD
 
             IDictionary<String, Meeting> IMSDADServer.ListMeetings(Dictionary<String, Meeting> meetings)
             {
-                //FIXME JUST MERGE AND RETURN
                 SafeSleep();
                 Console.WriteLine("[INFO][CLIENT-TO-SERVER][LIST-MEETINGS] Received List Meetings request");
                 ListMeetingsMerge(meetings);
-                return this.Meetings;
+                //Give only relevant meetings
+                //FIXME REVIEW THIS
+                return this.Meetings.Where(x => meetings.ContainsKey(x.Key)).ToDictionary(dict => dict.Key, dict => dict.Value); ;
             }
 
             Dictionary<String, String> IMSDADServer.NewClient(string url, string id)
@@ -310,7 +312,7 @@ namespace MSDAD
                 return tempServerNames;
             }
 
-            String IMSDADServer.getRandomClient(String clientId)
+            String IMSDADServer.GetRandomClient(String clientId)
             {
                 SafeSleep();
                 KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
@@ -377,8 +379,9 @@ namespace MSDAD
 
             void IMSDADServerToServer.CloseMeeting(String topic, Meeting meeting)
             {
-                //Total Order ensures we don't need to lock
+                //Total Order ensures we don't need to lock since only one close meeting happens at a time
                 Meetings[topic] = meeting;
+                
                 //Lock other threads from joining or updating this meeting
                 lock (Meetings.Keys.FirstOrDefault(k => k.Equals(topic)))
                 {
@@ -424,7 +427,7 @@ namespace MSDAD
             Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][JOIN-MEETING] Join of user {0} to meeting with topic {1} reached this server", userId, topic));
             bool found = Meetings.TryGetValue(topic, out Meeting meeting);
 
-            //FIXME Join will be causal with create and as such this will never happen
+            //Join will be causal with create and as such this should never happen
             if (!found)
             {
                 Console.WriteLine(String.Format("[ERROR][SERVER-TO-SERVER][JOIN-MEETING] Join of user {0} to meeting with topic {1} " +
@@ -440,7 +443,6 @@ namespace MSDAD
                 }
 
                 //Join Client to Meeting
-
                 if (!meeting.CanJoin(userId))
                 {
                     Console.WriteLine(String.Format("[ERROR][SERVER-TO-SERVER][JOIN-MEETING] Client {0} will join meeting with topic {1} without an invite", userId, topic));
@@ -456,9 +458,6 @@ namespace MSDAD
             Console.WriteLine(String.Format("[INFO][SERVER-TO-SERVER][JOIN-MEETING][FINISH] user {0} joined meeting with topic {1}", userId, topic));
             return;
         }
-
-        
-
 
         void IMSDADServerToServer.CreateMeeting(String topic, Meeting meeting)
         {
@@ -880,7 +879,7 @@ namespace MSDAD
         /*******************************************************Gossip***********************************************************/
         /***********************************************************************************************************************/
 
-        List<ServerClient> IMSDADServer.getGossipClients(string clientID)
+        List<ServerClient> IMSDADServer.GetGossipClients(string clientID)
         {
             SafeSleep();
             List<String> URLs = new List<String>();
@@ -914,7 +913,7 @@ namespace MSDAD
             return clients;
         }
 
-        String IMSDADServer.getServerID()
+        String IMSDADServer.GetServerID()
         {
             return ServerId;
         }

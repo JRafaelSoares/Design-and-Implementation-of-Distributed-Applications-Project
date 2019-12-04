@@ -18,13 +18,13 @@ namespace MSDAD
         public interface IMSDADServer
         {
             Dictionary<String, String> NewClient(String url, String id);
-            HashSet<ServerClient> CreateMeeting(string topic, Meeting meeting);
+            void CreateMeeting(string topic, Meeting meeting);
             void JoinMeeting(String topic, List<string> slots, String userId, DateTime timestamp);
             IDictionary<String, Meeting> ListMeetings(Dictionary<String, Meeting> meetings);
             void CloseMeeting(String topic, String userId);
-            String getRandomClient(String clientId);
-            List<ServerClient> getGossipClients(String ClientID);
-            String getServerID();
+            String GetRandomClient(String clientId);
+            List<ServerClient> GetGossipClients(String ClientID);
+            String GetServerID();
 
         }
 

@@ -32,7 +32,7 @@ namespace MSDAD
             public Client(IMSDADServer server, String userId, String serverUrl, String ClientURL)
             {
                 this.CurrentServer = server;
-                this.serverId = server.getServerID();
+                this.serverId = server.GetServerID();
                 this.ClientId = userId;
                 this.ClientURL = ClientURL;
                 this.milliseconds = 0;
@@ -146,7 +146,7 @@ namespace MSDAD
                     Meetings.Add(topic, meeting);
 
             
-                    gossipMeeting(CurrentServer.getGossipClients(ClientId), meeting, topic);
+                    gossipMeeting(CurrentServer.GetGossipClients(ClientId), meeting, topic);
                 
                 } catch (System.Net.Sockets.SocketException)
                 {
@@ -285,7 +285,7 @@ namespace MSDAD
                     //Register Client with server
                     client.KnownServers = server.NewClient(url, args[0]);
 
-                    string randomClientUrl = server.getRandomClient(client.ClientId);
+                    string randomClientUrl = server.GetRandomClient(client.ClientId);
                     if(randomClientUrl != null)
                     {
                         Console.WriteLine("THE RANDOM CLIENT IS: " + randomClientUrl);
@@ -376,7 +376,7 @@ namespace MSDAD
                 if (!Meetings.ContainsKey(topic))
                 {
                     Meetings.Add(topic, meeting);
-                    List<ServerClient> clients = CurrentServer.getGossipClients(ClientId);
+                    List<ServerClient> clients = CurrentServer.GetGossipClients(ClientId);
 
                     gossipMeeting(clients, meeting, topic);
                 }
