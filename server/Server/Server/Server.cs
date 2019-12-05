@@ -613,12 +613,17 @@ namespace MSDAD
             {
                 CheckFreeze();
                 int rand_id = random.Next();
-                Console.WriteLine(String.Format("[TOTAL-ORDER][DELIVER] Recieved message for operation <{0};{1}>", TOPending[messageId].Item1, rand_id));
-                GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
-                lock (TOPending)
+
+                if (TOPending.ContainsKey(messageId))
                 {
-                    TOPending.TryRemove(messageId, out _);
+                    Console.WriteLine(String.Format("[TOTAL-ORDER][DELIVER] Recieved message for operation <{0};{1}>", TOPending[messageId].Item1, rand_id));
+                    GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[messageId].Item1).Invoke(this, TOPending[messageId].Item2);
+                    lock (TOPending)
+                    {
+                        TOPending.TryRemove(messageId, out _);
+                    }
                 }
+                
                 ExitMethod();
             }
             private String TONextMessageId()
