@@ -343,9 +343,15 @@ namespace MSDAD
             {
                 CheckFreeze();
                 SafeSleep();
-                KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
-                ExitMethod();
-                return (t.Equals(default(KeyValuePair<ServerClient, byte>))) ? null : t.Key.Url;
+                List<ServerClient> possibleClients = this.ClientURLs.Keys.Where(x => x.ClientId != clientId).ToList();
+                if (possibleClients.Count == 0)
+                {
+                    //Only client in the system
+                    ExitMethod();
+                    return null;
+                }
+                //Return Random Client
+                return possibleClients[random.Next(possibleClients.Count)].Url;
             }
 
             void IMSDADServer.CloseMeeting(string topic, string userId)

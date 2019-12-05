@@ -17,7 +17,7 @@ namespace MSDAD
         class Client : MarshalByRefObject, IMSDADClientToClient, IMSDADClientPuppet
         {
 
-            private static readonly int WAIT_TIME = 30000;
+            private static readonly int WAIT_TIME = 6000;
             
             private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
             private String CurrentServerUrl;
@@ -288,12 +288,12 @@ namespace MSDAD
                         Console.WriteLine("Press R to run the entire script, or S to start run step by step. Enter Key to each step");
                         int state = 0;
                         //To run everything, press R
-                        /*if (Console.ReadLine().Equals("R"))
+                        if (Console.ReadLine().Equals("R"))
                         {
                             state = 1;
-                        }*/
+                        }
 
-                        client.ParseScript(reader.ReadLine, 1);
+                        client.ParseScript(reader.ReadLine, state);
                         reader.Close();
                     }
                     else
