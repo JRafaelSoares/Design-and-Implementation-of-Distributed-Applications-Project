@@ -1,0 +1,10 @@
+wait 2000
+join go2meeting3 1 Porto,2020-01-02
+wait 400
+join go1meeting3 1 Lisboa,2020-01-02
+wait 3000
+list
+wait 3000
+list
+wait 3000
+list

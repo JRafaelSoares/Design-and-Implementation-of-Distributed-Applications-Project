@@ -1,0 +1,16 @@
+wait 2000
+create go1meeting0 2 2 2 Lisboa,2020-01-02 Porto,2020-02-03 c1 c2
+create go1meeting1 2 2 2 Lisboa,2020-01-02 Porto,2020-02-03 c1 c2
+join go1meeting0 1 Lisboa,2020-01-02
+wait 400
+join go1meeting1 1 Lisboa,2020-01-02
+wait 3000
+list
+wait 3000
+close go1meeting0 
+create go1meeting2 2 2 2 Lisboa,2020-01-02 Porto,2020-02-03 c1 c4 
+create go1meeting3 1 2 0 Lisboa,2020-01-02 Porto,2020-01-02
+Wait 6000
+close go1meeting1
+close go1meeting2
+close go1meeting3

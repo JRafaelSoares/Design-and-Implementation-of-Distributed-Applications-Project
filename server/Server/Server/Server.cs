@@ -36,7 +36,6 @@ namespace MSDAD
 
 
             private bool LeaderToken { get; set; }
-            private static readonly Object CloseMeetingLock = new object();
             private static readonly Random random = new Random();
 
             /*Delegates for Async calls*/
@@ -80,10 +79,8 @@ namespace MSDAD
             /*********Properties for ViewSync****************/
             private bool ChangeViewFlagSend = false;
             private bool ChangeViewFlagDeliver = false;
-
             private ConcurrentDictionary<Tuple<String, int>, Tuple<string, object[]>> DeliverMessages = new ConcurrentDictionary<Tuple<string, int>, Tuple<string, object[]>>();
             private ConcurrentDictionary<String, int> ViewClock = new ConcurrentDictionary<string, int>();
-
             private object VSDeliverLock = new object();
             private object VSSendLock = new object();
 
@@ -94,8 +91,17 @@ namespace MSDAD
             private ConcurrentDictionary<String, Tuple<String, object[]>> TOPending = new ConcurrentDictionary<string, Tuple<string, object[]>>();
             /***************************************************/
 
-            /*********Properties for TotalOrder****************/
-            public String TOLeader;
+            /*********Properties for Gossip****************/
+            public int numClientsGossip()
+            {
+                if (this.ClientURLs.Count == 1)
+                { 
+                    return 0; 
+                }
+                else {
+                    return (int) Math.Floor(Math.Log(this.ClientURLs.Count + 1 ,2));
+                }
+            }
 
 
 
@@ -137,7 +143,7 @@ namespace MSDAD
                         // of the system and none crashes while the system is setup
                         Console.WriteLine(String.Format("[SETUP] Successfully connected to server with url {0} successfully", args[i]));
                         String id = otherServer.NewServer(server.ServerId, server.ServerUrl);
-                        if(String.Compare(id, server.ServerId) < 0)
+                        if (String.Compare(id, server.ServerId) < 0)
                         {
                             server.LeaderToken = false;
                         }
@@ -279,7 +285,7 @@ namespace MSDAD
             {
                 CheckFreeze();
                 Console.WriteLine(String.Format("[INFO][CLIENT-TO-SERVER][JOIN-MEETING] User {0} wants to join meeting with topic {1}", userId, topic));
-                bool found = Meetings.TryGetValue(topic, out Meeting meeting);
+                bool found = Meetings.TryGetValue(topic, out _);
                 //Meeting hasn't reached the server yet
                 if (!found)
                 {
@@ -339,7 +345,7 @@ namespace MSDAD
                 SafeSleep();
                 KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientId);
                 ExitMethod();
-                return (t.Equals(default(KeyValuePair<ServerClient, byte>)))  ? null : t.Key.Url;
+                return (t.Equals(default(KeyValuePair<ServerClient, byte>))) ? null : t.Key.Url;
             }
 
             void IMSDADServer.CloseMeeting(string topic, string userId)
@@ -365,7 +371,7 @@ namespace MSDAD
                         Monitor.Wait(FreezeLock);
                     }
                 }
-                
+
 
             }
 
@@ -373,11 +379,11 @@ namespace MSDAD
             {
                 lock (FreezeLock)
                 {
-                    if(FreezeFlag)
+                    if (FreezeFlag)
                     {
                         FreezeValue--;
                     }
-                    if(FreezeValue == 0)
+                    if (FreezeValue == 0)
                     {
                         FreezeFlag = false;
                     }
@@ -563,7 +569,7 @@ namespace MSDAD
                     ServerView.TryAdd(id, otherServer);
                     ServerNames.TryAdd(id, url);
                     VectorClock.TryAdd(id, 0);
-                    if(String.Compare(id, this.ServerId) < 0)
+                    if (String.Compare(id, this.ServerId) < 0)
                     {
                         Console.WriteLine("[LEADER] I am no longer Leader");
                         this.LeaderToken = false;
@@ -578,7 +584,7 @@ namespace MSDAD
                 return this.ServerId;
             }
 
-             
+
             /***********************************************************************************************************************/
             /***************************************************Total Order*********************************************************/
             /***********************************************************************************************************************/
@@ -623,7 +629,7 @@ namespace MSDAD
                         TOPending.TryRemove(messageId, out _);
                     }
                 }
-                
+
                 ExitMethod();
             }
             private String TONextMessageId()
@@ -717,7 +723,7 @@ namespace MSDAD
                 latch.Wait();
 
                 ((IMSDADServerToServer)this).BeginViewChange(crashedId);
-                
+
                 Console.WriteLine("[VIEW-SYNCHRONY][NEW-VIEW][QUERY] Begin Compute Max Clock");
                 ConcurrentDictionary<String, int> maxClock = new ConcurrentDictionary<String, int>(this.VectorClock);
 
@@ -844,14 +850,14 @@ namespace MSDAD
                 CalculateNewLeader();
                 List<String> pendings = this.TOPending.Keys.ToList();
                 pendings.Sort();
-                foreach(String pendingKey in pendings)
+                foreach (String pendingKey in pendings)
                 {
                     GetType().GetInterface("IMSDADServerToServer").GetMethod(TOPending[pendingKey].Item1).Invoke(this, TOPending[pendingKey].Item2);
                 }
                 Console.WriteLine("[VIEW-SYNC][NEW-VIEW][START-NEW-VIEW] Now that everyone has the view we can start sending messages again");
                 this.ChangeViewFlagSend = false;
                 Console.WriteLine("[VIEW-SYNC][NEW-VIEW][START-NEW-VIEW] Wakeup everyone who wanted to send a message");
-                lock(VSSendLock)
+                lock (VSSendLock)
                 {
                     Monitor.PulseAll(VSSendLock);
                 }
@@ -887,7 +893,7 @@ namespace MSDAD
                 List<string> servers = ServerView.Keys.ToList();
                 servers.Sort();
                 String leader = servers.FirstOrDefault();
-                if(leader == null)
+                if (leader == null)
                 {
                     Console.WriteLine("[LEADER-CHANGE] I am leader and only one");
                     this.LeaderToken = true;
@@ -905,7 +911,7 @@ namespace MSDAD
                         this.LeaderToken = false;
                     }
                 }
-                
+
             }
             /***********************************************************************************************************************/
             /*************************************************Failure Detector******************************************************/
@@ -1061,7 +1067,7 @@ namespace MSDAD
                         IAsyncResult RemAr = remoteDel.BeginInvoke(messageId, operation, args, null, null);
                     }
 
-                    RBMessages[messageId].Wait();    
+                    RBMessages[messageId].Wait();
                     GetType().GetInterface("IMSDADServerToServer").GetMethod(operation).Invoke(this, args);
                 }
                 else
@@ -1087,36 +1093,27 @@ namespace MSDAD
             {
                 CheckFreeze();
                 SafeSleep();
-                List<String> URLs = new List<String>();
-                List<ServerClient> clients = new List<ServerClient>();
-                String s;
-
-                while (URLs.Count < ClientURLs.Count / 2)
+                int count = numClientsGossip();
+                if (count == 0)
                 {
-                    KeyValuePair<ServerClient, byte> t = this.ClientURLs.FirstOrDefault(x => x.Key.ClientId != clientID);
-
-                    s = t.Equals(null) ? null : t.Key.Url;
-
-                    if (s == null)
-                        return null;
-
-                    if (!URLs.Contains(s))
-                        URLs.Add(s);
+                    //there is only one client, no gossip
+                    return null;
                 }
-
-                foreach (String url in URLs)
+                List<ServerClient> gossipClients = new List<ServerClient>();
+                List<ServerClient> allClients = this.ClientURLs.Keys.ToList();
+                while (gossipClients.Count < count)
                 {
-                    foreach (ServerClient client in ClientURLs.Keys.ToList())
+                    int index = random.Next(allClients.Count);
+
+                    ServerClient currClient = allClients[index];
+
+                    if (!gossipClients.Contains(currClient))
                     {
-                        if (client.Url.Equals(url))
-                        {
-                            clients.Add(client);
-                            break;
-                        }
+                        gossipClients.Add(currClient);
                     }
                 }
                 ExitMethod();
-                return clients;
+                return gossipClients;
             }
 
             String IMSDADServer.GetServerID()

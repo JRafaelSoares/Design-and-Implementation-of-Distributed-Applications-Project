@@ -17,7 +17,7 @@ namespace MSDAD
         class Client : MarshalByRefObject, IMSDADClientToClient, IMSDADClientPuppet
         {
 
-            private static readonly int WAIT_TIME = 3000;
+            private static readonly int WAIT_TIME = 30000;
             
             private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
             private String CurrentServerUrl;
@@ -130,10 +130,15 @@ namespace MSDAD
                     }
 
                     CurrentServer.CreateMeeting(topic, meeting);
+                    Console.WriteLine(String.Format("Meeting with topic {0} created at the server", topic));
                     Meetings.Add(topic, meeting);
-                    gossipMeeting(CurrentServer.GetGossipClients(ClientId), meeting, topic);
-                
-                } catch (System.Net.Sockets.SocketException)
+                    Console.WriteLine(String.Format("Trying to gossip meeting with topic {0}", topic));
+                    List<ServerClient> gossipClients = CurrentServer.GetGossipClients(ClientId);
+                    Console.WriteLine(String.Format("got {0} clients to gossip meeting with topic {0}", gossipClients.Count, topic));
+                    gossipMeeting(gossipClients, meeting, topic);
+                    Console.WriteLine(String.Format("meeting with topic {0} gossiped", topic));
+                }
+                catch (System.Net.Sockets.SocketException)
                 {
                     this.ReconnectingClient();
                     this.CreateMeeting(topic, min_atendees, slots, invitees);
@@ -283,12 +288,12 @@ namespace MSDAD
                         Console.WriteLine("Press R to run the entire script, or S to start run step by step. Enter Key to each step");
                         int state = 0;
                         //To run everything, press R
-                        if (Console.ReadLine().Equals("R"))
+                        /*if (Console.ReadLine().Equals("R"))
                         {
                             state = 1;
-                        }
+                        }*/
 
-                        client.ParseScript(reader.ReadLine, state);
+                        client.ParseScript(reader.ReadLine, 1);
                         reader.Close();
                     }
                     else
@@ -334,20 +339,29 @@ namespace MSDAD
 
                 foreach (ServerClient client in clients)
                 {
+                    Console.WriteLine(String.Format("Gossip metting with topic {0}to client with id{1}", topic, client.ClientId));
                     IMSDADClientToClient c = (IMSDADClientToClient)Activator.GetObject(typeof(IMSDADClientToClient), client.Url);
                     c.receiveGossipMeetings(meeting, topic);
+                    Console.WriteLine(String.Format("Successfully gossiped metting with topic {0}to client with id{1}", topic, client.ClientId));
                 }
             }
 
             void IMSDADClientToClient.receiveGossipMeetings(Meeting meeting, string topic)
             {
+                Console.WriteLine(String.Format("Received meeting with topic {0} to gossip", topic));
                 if (!Meetings.ContainsKey(topic))
                 {
-                    Console.WriteLine("I didn't have that meeting");
+                    Console.WriteLine(String.Format("I didn't have meeting with topic {0} will also gossip", topic));
                     Meetings.Add(topic, meeting);
+                    Console.WriteLine(String.Format("Get clients to gossip meeting with topic {0}", topic));
                     List<ServerClient> clients = CurrentServer.GetGossipClients(ClientId);
+                    Console.WriteLine(String.Format("Gossiped meeting with topic {0}", topic));
 
                     gossipMeeting(clients, meeting, topic);
+                }
+                else
+                {
+                    Console.WriteLine(String.Format("Already seen meeting with topic {0} so no gossip from me", topic));
                 }
             }
         }
