@@ -5,8 +5,6 @@ Server s2 tcp://localhost:3002/server2 1 100 200
 Wait 2000
 Server s3 tcp://localhost:3003/server3 1 100 200
 Wait 2000
-Client c13 tcp://localhost:4013/client13 tcp://localhost:3001/server1 client-13.txt
-Wait 10000
 Client c1 tcp://localhost:4001/client1 tcp://localhost:3001/server1 client-1.txt
 Client c2 tcp://localhost:4002/client2 tcp://localhost:3002/server2 client-2.txt
 Client c3 tcp://localhost:4003/client3 tcp://localhost:3003/server3 client-3.txt
