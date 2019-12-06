@@ -1,0 +1,15 @@
+create meeting1-client7 1 1 0 Lisboa,2020-01-02
+create meeting2-client7 1 1 0 Lisboa,2020-01-02
+create meeting3-client7 1 1 0 Lisboa,2020-01-02
+create meeting4-client7 1 1 0 Lisboa,2020-01-02
+create meeting5-client7 1 1 0 Lisboa,2020-01-02
+create meeting6-client7 1 1 0 Lisboa,2020-01-02
+create meeting7-client7 1 1 0 Lisboa,2020-01-02
+create meeting8-client7 1 1 0 Lisboa,2020-01-02
+create meeting9-client7 1 1 0 Lisboa,2020-01-02
+create meeting10-client7 1 1 0 Lisboa,2020-01-02
+create meeting11-client7 1 1 0 Lisboa,2020-01-02
+create meeting12-client7 1 1 0 Lisboa,2020-01-02
+create meeting13-client7 1 1 0 Lisboa,2020-01-02
+create meeting14-client7 1 1 0 Lisboa,2020-01-02
+create meeting15-client7 1 1 0 Lisboa,2020-01-02
