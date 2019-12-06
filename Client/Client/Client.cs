@@ -1,12 +1,14 @@
 ﻿using MSDAD.Shared;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
+using System.Timers;
 
 namespace MSDAD
 {
@@ -16,7 +18,6 @@ namespace MSDAD
 
         class Client : MarshalByRefObject, IMSDADClientToClient, IMSDADClientPuppet
         {
-
             private static readonly int WAIT_TIME = 6000;
             
             private Dictionary<String, String> KnownServers { get; set; } = new Dictionary<string, String>();
@@ -28,6 +29,8 @@ namespace MSDAD
             private int milliseconds;
             private Dictionary<String, Meeting> Meetings { get; set; } = new Dictionary<string, Meeting>();
             private static readonly Object CreateMeetingLock = new object();
+
+            private string scriptName { get; set; }
 
             public Client(IMSDADServer server, String userId, String serverUrl, String ClientURL)
             {
@@ -43,8 +46,9 @@ namespace MSDAD
             {
                 SafeSleep();
                 try
-
                 {
+                    Stopwatch stopWatch = new Stopwatch();
+                    stopWatch.Start();
                     IDictionary<String, Meeting> receivedMeetings = CurrentServer.ListMeetings(this.Meetings.Where(x => x.Value.CanJoin(this.ClientId))
                         .ToDictionary(entry => entry.Key, entry => entry.Value));
                     foreach (Meeting meeting in receivedMeetings.Values)
@@ -57,6 +61,12 @@ namespace MSDAD
                     {
                         Console.WriteLine(meeting.ToString());
                     }
+                    stopWatch.Stop();
+
+                    TimeSpan ts = stopWatch.Elapsed;
+                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    file.WriteLine("List time: " + ts);
+                    file.Close();
 
                 }
                catch (System.Net.Sockets.SocketException)
@@ -71,9 +81,17 @@ namespace MSDAD
             {
                 SafeSleep();
                 try
-                {   
+                { 
+                    Stopwatch stopWatch = new Stopwatch();
+                    stopWatch.Start();
                     //Join meeting 
                     CurrentServer.JoinMeeting(topic, slots, this.ClientId, DateTime.Now);
+                    stopWatch.Stop();
+
+                    TimeSpan ts = stopWatch.Elapsed;
+                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    file.WriteLine("Join time: " + ts);
+                    file.Close();
                 }
                 catch (NoSuchMeetingException) {
                     // Server doesn't have the meeting yet, wait and try again later
@@ -98,7 +116,15 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {
+                    Stopwatch stopWatch = new Stopwatch();
+                    stopWatch.Start();
                     CurrentServer.CloseMeeting(topic, this.ClientId);
+                    stopWatch.Stop();
+
+                    TimeSpan ts = stopWatch.Elapsed;
+                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    file.WriteLine("CloseMeeting time: " + ts);
+                    file.Close();
                 }
                 catch (MSDAD.Shared.ServerException e)
                 {
@@ -118,6 +144,8 @@ namespace MSDAD
                 SafeSleep();
                 try
                 {
+                    Stopwatch stopWatch = new Stopwatch();
+                    stopWatch.Start();
                     Meeting meeting;
 
                     if (invitees == null)
@@ -137,6 +165,13 @@ namespace MSDAD
                     Console.WriteLine(String.Format("got {0} clients to gossip meeting with topic {0}", gossipClients.Count, topic));
                     gossipMeeting(gossipClients, meeting, topic);
                     Console.WriteLine(String.Format("meeting with topic {0} gossiped", topic));
+
+                    stopWatch.Stop();
+
+                    TimeSpan ts = stopWatch.Elapsed;
+                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    file.WriteLine("CloseMeeting time: " + ts);
+                    file.Close();
                 }
                 catch (System.Net.Sockets.SocketException)
                 {
@@ -267,6 +302,7 @@ namespace MSDAD
                     Client client = new Client(server, args[0], args[3], url);
                     RemotingServices.Marshal(client, args[2], typeof(Client));
 
+                    client.scriptName = args[4];
                     //Register Client with server
                     client.KnownServers = server.NewClient(url, args[0]);
 
@@ -288,12 +324,13 @@ namespace MSDAD
                         Console.WriteLine("Press R to run the entire script, or S to start run step by step. Enter Key to each step");
                         int state = 0;
                         //To run everything, press R
+                        /*
                         if (Console.ReadLine().Equals("R"))
                         {
                             state = 1;
                         }
-
-                        client.ParseScript(reader.ReadLine, state);
+                        */
+                        client.ParseScript(reader.ReadLine, 1);
                         reader.Close();
                     }
                     else
