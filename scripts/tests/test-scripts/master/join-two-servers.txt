@@ -1,14 +1,19 @@
 AddRoom Lisboa 10 room1
-Server s1 tcp://localhost:3000/server1 1 100 200
-Client c1 tcp://localhost:4000/client1 tcp://localhost:3000/server1 sample_script1
-Client c2 tcp://localhost:4001/client2 tcp://localhost:3000/server1 sample_script1
-Client c3 tcp://localhost:4002/client1 tcp://localhost:3000/server1 sample_script1
-Client c4 tcp://localhost:4003/client1 tcp://localhost:3000/server1 sample_script1
-Client c5 tcp://localhost:4004/client1 tcp://localhost:3000/server1 sample_script1
-Client c6 tcp://localhost:4005/client1 tcp://localhost:3000/server1 sample_script1
-Client c7 tcp://localhost:4006/client1 tcp://localhost:3000/server1 sample_script1
-Client c8 tcp://localhost:4007/client1 tcp://localhost:3000/server1 sample_script1
-Client c9 tcp://localhost:4008/client1 tcp://localhost:3000/server1 sample_script1
-Client c10 tcp://localhost:4009/client1 tcp://localhost:3000/server1 sample_script1
-Client c11 tcp://localhost:4010/client1 tcp://localhost:3000/server1 sample_script1
-Client c12 tcp://localhost:4011/client1 tcp://localhost:3000/server1 sample_script1
+Server s1 tcp://localhost:3001/server1 1 100 200
+Wait 2000
+Server s2 tcp://localhost:3002/server2 1 100 200
+Wait 2000
+Client c13 tcp://localhost:4013/client13 tcp://localhost:3001/server1 client-13.txt
+Wait 10000
+Client c1 tcp://localhost:4001/client1 tcp://localhost:3001/server1 client-1.txt
+Client c2 tcp://localhost:4002/client2 tcp://localhost:3002/server2 client-2.txt
+Client c3 tcp://localhost:4003/client3 tcp://localhost:3001/server1 client-3.txt
+Client c4 tcp://localhost:4004/client4 tcp://localhost:3002/server2 client-4.txt
+Client c5 tcp://localhost:4005/client5 tcp://localhost:3001/server1 client-5.txt
+Client c6 tcp://localhost:4006/client6 tcp://localhost:3002/server2 client-6.txt
+Client c7 tcp://localhost:4007/client7 tcp://localhost:3001/server1 client-7.txt
+Client c8 tcp://localhost:4008/client8 tcp://localhost:3002/server2 client-8.txt
+Client c9 tcp://localhost:4009/client9 tcp://localhost:3001/server1 client-9.txt
+Client c10 tcp://localhost:4010/client10 tcp://localhost:3002/server2 client-10.txt
+Client c11 tcp://localhost:4011/client11 tcp://localhost:3001/server1 client-11.txt
+Client c12 tcp://localhost:4012/client12 tcp://localhost:3002/server2 client-12.txt
