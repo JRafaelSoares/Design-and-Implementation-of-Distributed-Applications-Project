@@ -65,7 +65,7 @@ namespace MSDAD
 
                     TimeSpan ts = stopWatch.Elapsed;
                     StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
-                    file.WriteLine("List time: " + ts);
+                    file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
 
                 }
@@ -90,7 +90,7 @@ namespace MSDAD
 
                     TimeSpan ts = stopWatch.Elapsed;
                     StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
-                    file.WriteLine("Join time: " + ts);
+                    file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
                 }
                 catch (NoSuchMeetingException) {
@@ -123,7 +123,7 @@ namespace MSDAD
 
                     TimeSpan ts = stopWatch.Elapsed;
                     StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
-                    file.WriteLine("CloseMeeting time: " + ts);
+                    file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
                 }
                 catch (MSDAD.Shared.ServerException e)
@@ -173,7 +173,7 @@ namespace MSDAD
 
                     TimeSpan ts = stopWatch.Elapsed;
                     StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
-                    file.WriteLine("CloseMeeting time: " + ts);
+                    file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
                 }
                 catch (System.Net.Sockets.SocketException)

@@ -1,15 +1,15 @@
-CloseMeeting time: 00:00:00.2116313
-CloseMeeting time: 00:00:00.1601996
-CloseMeeting time: 00:00:00.2042966
-CloseMeeting time: 00:00:00.1654462
-CloseMeeting time: 00:00:00.1932673
-CloseMeeting time: 00:00:00.2658849
-CloseMeeting time: 00:00:00.3035703
-CloseMeeting time: 00:00:00.2304603
-CloseMeeting time: 00:00:00.3011104
-CloseMeeting time: 00:00:00.1885630
-CloseMeeting time: 00:00:00.2475563
-CloseMeeting time: 00:00:00.2599643
-CloseMeeting time: 00:00:00.2154851
-CloseMeeting time: 00:00:00.2620269
-CloseMeeting time: 00:00:00.2170810
+178.7067
+274.7617
+235.9536
+208.5573
+223.6043
+261.5593
+241.8981
+212.7705
+214.1186
+249.4095
+310.5945
+236.9903
+240.7613
+260.547
+263.4313
