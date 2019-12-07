@@ -13,3 +13,19 @@ create meeting12-client7 1 1 0 Lisboa,2020-01-02
 create meeting13-client7 1 1 0 Lisboa,2020-01-02
 create meeting14-client7 1 1 0 Lisboa,2020-01-02
 create meeting15-client7 1 1 0 Lisboa,2020-01-02
+wait 10000
+close meeting1-client7
+close meeting2-client7
+close meeting3-client7
+close meeting4-client7
+close meeting5-client7
+close meeting6-client7
+close meeting7-client7
+close meeting8-client7
+close meeting9-client7
+close meeting10-client7
+close meeting11-client7
+close meeting12-client7
+close meeting13-client7
+close meeting14-client7
+close meeting15-client7
