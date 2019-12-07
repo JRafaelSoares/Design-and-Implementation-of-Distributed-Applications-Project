@@ -185,6 +185,7 @@ namespace MSDAD
                 foreach (String otherServer in server.ServerView.Keys)
                 {
                     server.CountFails.TryAdd(otherServer, 0);
+                    server.Timeouts.TryAdd(otherServer, server.timeout);
                 }
 
                 Thread t = new Thread(new ThreadStart(server.FailureDetector));
