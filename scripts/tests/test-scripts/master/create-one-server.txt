@@ -1,5 +1,5 @@
 AddRoom Lisboa 10 room1
-Server s1 tcp://localhost:3000/server1 1 100 200
+Server s1 tcp://localhost:3000/server1 0 100 200
 Wait 2000
 Client c1 tcp://localhost:4001/client1 tcp://localhost:3000/server1 client-1.txt
 Client c2 tcp://localhost:4002/client2 tcp://localhost:3000/server1 client-2.txt
