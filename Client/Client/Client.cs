@@ -64,7 +64,7 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
                     file.WriteLine("List time: " + ts);
                     file.Close();
 
@@ -89,7 +89,7 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
                     file.WriteLine("Join time: " + ts);
                     file.Close();
                 }
@@ -122,7 +122,7 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
                     file.WriteLine("CloseMeeting time: " + ts);
                     file.Close();
                 }
@@ -162,14 +162,17 @@ namespace MSDAD
                     Meetings.Add(topic, meeting);
                     Console.WriteLine(String.Format("Trying to gossip meeting with topic {0}", topic));
                     List<ServerClient> gossipClients = CurrentServer.GetGossipClients(ClientId);
-                    Console.WriteLine(String.Format("got {0} clients to gossip meeting with topic {0}", gossipClients.Count, topic));
+                    if(gossipClients != null)
+                    {
+                        Console.WriteLine(String.Format("got {0} clients to gossip meeting with topic {0}", gossipClients.Count, topic));
+                    }
                     gossipMeeting(gossipClients, meeting, topic);
                     Console.WriteLine(String.Format("meeting with topic {0} gossiped", topic));
 
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = new StreamWriter("" + this.scriptName + this.ClientId + "results");
+                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
                     file.WriteLine("CloseMeeting time: " + ts);
                     file.Close();
                 }
