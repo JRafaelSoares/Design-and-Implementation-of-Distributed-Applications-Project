@@ -64,7 +64,8 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
+                    StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
+
                     file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
 
@@ -89,7 +90,8 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
+                    StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
+
                     file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
                 }
@@ -122,7 +124,7 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
+                    StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
                     file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
                 }
@@ -172,7 +174,8 @@ namespace MSDAD
                     stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = File.AppendText("" + this.scriptName + this.ClientId + "results.txt");
+                    StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
+
                     file.WriteLine(ts.TotalMilliseconds);
                     file.Close();
                 }
