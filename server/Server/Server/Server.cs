@@ -65,7 +65,7 @@ namespace MSDAD
             {
                 get
                 {
-                    return TimeSpan.FromMilliseconds((MaxDelay * 2) + 1000);
+                    return TimeSpan.FromMilliseconds((MaxDelay * 2) + 10000);
                 }
             }
             private ConcurrentDictionary<String, int> CountFails = new ConcurrentDictionary<String, int>();
