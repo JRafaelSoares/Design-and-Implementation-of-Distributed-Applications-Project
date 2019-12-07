@@ -174,10 +174,10 @@ namespace MSDAD
 
 
                     TimeSpan ts = stopWatch.Elapsed;
-                    StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
+                    //StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
 
-                    file.WriteLine(ts.TotalMilliseconds);
-                    file.Close();
+                    //file.WriteLine(ts.TotalMilliseconds);
+                    //file.Close();
                 }
                 catch (System.Net.Sockets.SocketException)
                 {
