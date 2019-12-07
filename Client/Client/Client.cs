@@ -163,6 +163,7 @@ namespace MSDAD
                     Console.WriteLine(String.Format("Meeting with topic {0} created at the server", topic));
                     Meetings.Add(topic, meeting);
                     Console.WriteLine(String.Format("Trying to gossip meeting with topic {0}", topic));
+                    stopWatch.Stop();
                     List<ServerClient> gossipClients = CurrentServer.GetGossipClients(ClientId);
                     if(gossipClients != null)
                     {
@@ -171,7 +172,6 @@ namespace MSDAD
                     gossipMeeting(gossipClients, meeting, topic);
                     Console.WriteLine(String.Format("meeting with topic {0} gossiped", topic));
 
-                    stopWatch.Stop();
 
                     TimeSpan ts = stopWatch.Elapsed;
                     StreamWriter file = File.AppendText("tests\\" + this.scriptName + this.ClientId + "results.txt");
